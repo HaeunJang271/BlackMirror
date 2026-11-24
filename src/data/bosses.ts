@@ -9,9 +9,9 @@ export const BOSSES: BossDef[] = [
     truthCount: 3,
     curseCount: 2,
     introLine: '초침이 멈춘 자리에서… 네 차례다.',
-    gimmickBadge: '10초 · 3장 +0.5',
-    gimmickDescription: '매 턴 10초 제한. 진실을 3장째 열면 콤보 배수 +0.5',
-    turnTimerSec: 10,
+    gimmickBadge: '15초 · 3장 +0.5',
+    gimmickDescription: '매 턴 15초 제한. 진실을 3장째 열면 콤보 배수 +0.5',
+    turnTimerSec: 15,
     thirdSuccessMultBonus: 0.5,
   },
   {
