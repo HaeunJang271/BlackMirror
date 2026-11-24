@@ -6,6 +6,7 @@ import type {
   GameAction,
   GameState,
   RelicId,
+  ResolveInfo,
   RitualId,
 } from '../types/game'
 import { log } from '../utils/logger'
@@ -17,6 +18,8 @@ import { applyTruthFlip, createEmptyTurn, markRitualUsed } from './turn'
 const MAX_HAND = 4
 const MAX_RELICS = 4
 const MAX_CANDLES = 3
+const CASH_RESOLVE_MS = 650
+const FAIL_RESOLVE_MS = 850
 
 /**
  * 초기 타이틀 화면 상태를 생성한다.
@@ -37,6 +40,7 @@ export function createInitialState(seed = Date.now()): GameState {
     lastPeekCardId: null,
     lastDamage: 0,
     curseFlash: false,
+    resolve: null,
     round: 0,
     rngSeed: seed,
   }
@@ -70,9 +74,12 @@ function drawRitual(hand: RitualId[], seed: number, salt: number): RitualId[] {
   return pick ? [...hand, pick] : hand
 }
 
+function stageSalt(state: GameState): number {
+  return state.stageIndex * 97 + state.relics.length * 13
+}
+
 function startStage(state: GameState, stageIndex: number): GameState {
   const boss = getBoss(stageIndex)
-  const round = 1
   return {
     ...state,
     phase: 'STAGE_INTRO',
@@ -83,8 +90,9 @@ function startStage(state: GameState, stageIndex: number): GameState {
     reward: null,
     lastDamage: 0,
     curseFlash: false,
+    resolve: null,
     lastPeekCardId: null,
-    round,
+    round: 1,
   }
 }
 
@@ -96,7 +104,11 @@ function beginPlayerTurn(state: GameState): GameState {
     state.rngSeed,
     round,
   )
-  const hand = drawRitual(state.hand, state.rngSeed, round * 31 + stageSalt(state))
+  const hand = drawRitual(
+    state.hand,
+    state.rngSeed,
+    round * 31 + stageSalt(state),
+  )
   return {
     ...state,
     phase: 'PLAYER_TURN',
@@ -106,11 +118,37 @@ function beginPlayerTurn(state: GameState): GameState {
     turn: createEmptyTurn(),
     lastPeekCardId: null,
     curseFlash: false,
+    resolve: null,
   }
 }
 
-function stageSalt(state: GameState): number {
-  return state.stageIndex * 97 + state.relics.length * 13
+function offerReward(state: GameState): GameState {
+  const rand = createRng(state.rngSeed + state.stageIndex * 777)
+  const relicPool = ALL_RELIC_IDS.filter((id) => !state.relics.includes(id))
+  const ritualPool = ALL_RITUAL_IDS.filter((id) => !state.hand.includes(id))
+  return {
+    ...state,
+    phase: 'REWARD',
+    resolve: null,
+    reward: {
+      relicOptions: pickN(relicPool, Math.min(1, relicPool.length), rand),
+      ritualOptions: pickN(ritualPool, Math.min(2, ritualPool.length), rand),
+    },
+  }
+}
+
+function enterResolve(
+  state: GameState,
+  patch: Partial<GameState>,
+  info: ResolveInfo,
+): GameState {
+  return {
+    ...state,
+    ...patch,
+    phase: 'RESOLVING',
+    resolve: info,
+    turn: createEmptyTurn(),
+  }
 }
 
 function applyCashOut(state: GameState): GameState {
@@ -127,42 +165,29 @@ function applyCashOut(state: GameState): GameState {
   const bossHp = Math.max(0, state.bossHp - breakdown.finalDamage)
   log('info', 'cash out', { damage: breakdown.finalDamage, bossHp })
 
-  if (bossHp <= 0) {
-    return offerReward({
-      ...state,
-      bossHp: 0,
+  const next = bossHp <= 0 ? 'reward' : 'round'
+  return enterResolve(
+    state,
+    {
+      bossHp,
       candles,
       ashBreathUsedThisRun,
       lastDamage: breakdown.finalDamage,
-      turn: createEmptyTurn(),
-    })
-  }
-
-  return beginPlayerTurn({
-    ...state,
-    bossHp,
-    candles,
-    ashBreathUsedThisRun,
-    lastDamage: breakdown.finalDamage,
-  })
-}
-
-function offerReward(state: GameState): GameState {
-  const rand = createRng(state.rngSeed + state.stageIndex * 777)
-  const relicPool = ALL_RELIC_IDS.filter((id) => !state.relics.includes(id))
-  const ritualPool = ALL_RITUAL_IDS.filter((id) => !state.hand.includes(id))
-  return {
-    ...state,
-    phase: 'REWARD',
-    reward: {
-      relicOptions: pickN(relicPool, Math.min(1, relicPool.length), rand),
-      ritualOptions: pickN(ritualPool, Math.min(2, ritualPool.length), rand),
+      curseFlash: false,
     },
-  }
+    {
+      kind: 'cash_out',
+      damage: breakdown.finalDamage,
+      message: null,
+      candlesBefore: state.candles,
+      candlesAfter: candles,
+      next,
+      durationMs: CASH_RESOLVE_MS,
+    },
+  )
 }
 
 function handleCurse(state: GameState): GameState {
-  // 소금의 원: 방어 + 즉시 정산
   if (state.turn.saltCircleActive) {
     log('info', 'salt circle defend + auto cash out')
     return applyCashOut({
@@ -173,26 +198,71 @@ function handleCurse(state: GameState): GameState {
   }
 
   const loss = state.turn.bloodPactActive ? 2 : 1
-  const candles = Math.max(0, state.candles - loss)
+  const candlesAfter = Math.max(0, state.candles - loss)
   const cursesHitThisRun = state.cursesHitThisRun + 1
+  const next = candlesAfter <= 0 ? 'game_over' : 'round'
 
-  if (candles <= 0) {
-    return {
-      ...state,
-      candles: 0,
+  return enterResolve(
+    state,
+    {
+      candles: candlesAfter,
       cursesHitThisRun,
       curseFlash: true,
+      lastDamage: 0,
+    },
+    {
+      kind: 'curse',
+      damage: 0,
+      message: '저주에 걸렸다',
+      candlesBefore: state.candles,
+      candlesAfter,
+      next,
+      durationMs: FAIL_RESOLVE_MS,
+    },
+  )
+}
+
+function handleTimeout(state: GameState): GameState {
+  if (canCashOut(state.turn.consecutiveTruths)) {
+    return applyCashOut(state)
+  }
+  const candlesAfter = Math.max(0, state.candles - 1)
+  const next = candlesAfter <= 0 ? 'game_over' : 'round'
+  return enterResolve(
+    state,
+    {
+      candles: candlesAfter,
+      curseFlash: true,
+      lastDamage: 0,
+    },
+    {
+      kind: 'timeout',
+      damage: 0,
+      message: '시간이 다 됐다',
+      candlesBefore: state.candles,
+      candlesAfter,
+      next,
+      durationMs: FAIL_RESOLVE_MS,
+    },
+  )
+}
+
+function finishResolve(state: GameState): GameState {
+  if (state.phase !== 'RESOLVING' || !state.resolve) return state
+  const { next } = state.resolve
+  if (next === 'reward') {
+    return offerReward({ ...state, resolve: null, curseFlash: false })
+  }
+  if (next === 'game_over') {
+    return {
+      ...state,
       phase: 'GAME_OVER',
+      resolve: null,
+      curseFlash: false,
       turn: createEmptyTurn(),
     }
   }
-
-  return beginPlayerTurn({
-    ...state,
-    candles,
-    cursesHitThisRun,
-    curseFlash: true,
-  })
+  return beginPlayerTurn({ ...state, curseFlash: false })
 }
 
 function useRitual(
@@ -204,7 +274,7 @@ function useRitual(
   if (!state.hand.includes(ritualId)) return state
 
   const hand = state.hand.filter((id) => id !== ritualId)
-  let next: GameState = {
+  const next: GameState = {
     ...state,
     hand,
     turn: markRitualUsed(state.turn, ritualId),
@@ -225,23 +295,14 @@ function useRitual(
       }
     }
     case 'salt_circle':
-      return {
-        ...next,
-        turn: { ...next.turn, saltCircleActive: true },
-      }
+      return { ...next, turn: { ...next.turn, saltCircleActive: true } }
     case 'blood_pact':
-      return {
-        ...next,
-        turn: { ...next.turn, bloodPactActive: true },
-      }
+      return { ...next, turn: { ...next.turn, bloodPactActive: true } }
     case 'swapped_card':
       return { ...next, board: removeOneUnopenedCurse(next.board) }
     case 'ash_breath':
       if (state.ashBreathUsedThisRun) return state
-      return {
-        ...next,
-        turn: { ...next.turn, ashBreathArmed: true },
-      }
+      return { ...next, turn: { ...next.turn, ashBreathArmed: true } }
     case 'forbidden_hand': {
       const scores = next.turn.openedTruthBaseScores
       if (scores.length === 0) return state
@@ -267,7 +328,14 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case 'START_RUN':
       return startStage(
-        { ...createInitialState(state.rngSeed || Date.now()), hand: pickN(ALL_RITUAL_IDS, 2, createRng(state.rngSeed || Date.now())) },
+        {
+          ...createInitialState(state.rngSeed || Date.now()),
+          hand: pickN(
+            ALL_RITUAL_IDS,
+            2,
+            createRng(state.rngSeed || Date.now()),
+          ),
+        },
         0,
       )
     case 'CONFIRM_INTRO':
@@ -280,10 +348,16 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       const board = state.board.map((c) =>
         c.id === action.cardId ? { ...c, revealed: true } : c,
       )
-      if (card.face === 'curse') {
-        return handleCurse({ ...state, board })
+      const withTimer: GameState = {
+        ...state,
+        board,
+        turn: { ...state.turn, timerStarted: true },
       }
-      return { ...state, board, turn: applyTruthFlip(state.turn) }
+      if (card.face === 'curse') return handleCurse(withTimer)
+      return {
+        ...withTimer,
+        turn: applyTruthFlip({ ...state.turn, timerStarted: true }),
+      }
     }
     case 'CASH_OUT':
       if (state.phase !== 'PLAYER_TURN') return state
@@ -313,24 +387,11 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return beginPlayerTurn({ ...state, candles: 1, phase: 'PLAYER_TURN' })
     case 'BACK_TO_TITLE':
       return createInitialState(state.rngSeed + 1)
-    case 'TIMER_EXPIRED': {
+    case 'TIMER_EXPIRED':
       if (state.phase !== 'PLAYER_TURN') return state
-      // 점수 있으면 강제 정산, 없으면 촛불 -1 후 다음 라운드
-      if (canCashOut(state.turn.consecutiveTruths)) {
-        return applyCashOut(state)
-      }
-      const candles = Math.max(0, state.candles - 1)
-      if (candles <= 0) {
-        return {
-          ...state,
-          candles: 0,
-          curseFlash: true,
-          phase: 'GAME_OVER',
-          turn: createEmptyTurn(),
-        }
-      }
-      return beginPlayerTurn({ ...state, candles, curseFlash: true })
-    }
+      return handleTimeout(state)
+    case 'FINISH_RESOLVE':
+      return finishResolve(state)
     default:
       return state
   }

@@ -2,27 +2,33 @@ import { motion } from 'framer-motion'
 import { useState } from 'react'
 import { RELICS } from '../data/relics'
 import { RITUALS } from '../data/rituals'
-import type { RelicId, RitualId } from '../types/game'
+import type { RelicId, ResolveInfo, RitualId } from '../types/game'
 
 interface PlayerDockProps {
   candles: number
   relics: RelicId[]
   hand: RitualId[]
   disabled?: boolean
+  resolve: ResolveInfo | null
   onUseRitual: (ritualId: RitualId) => void
 }
 
 /**
- * 하단 30%: 촛불 · 유물 슬롯 · 의식 카드 손패 (스크롤 없이 1화면 고정).
+ * 하단 30%: 촛불 · 유물 슬롯 · 의식 카드 손패.
  */
 export function PlayerDock({
   candles,
   relics,
   hand,
   disabled,
+  resolve,
   onUseRitual,
 }: PlayerDockProps) {
   const [tip, setTip] = useState<string | null>(null)
+  const extinguishing =
+    resolve &&
+    (resolve.kind === 'curse' || resolve.kind === 'timeout') &&
+    resolve.candlesAfter < resolve.candlesBefore
 
   return (
     <footer className="flex h-[30%] min-h-0 flex-col gap-1.5 overflow-hidden border-t border-brass/15 bg-black/25 px-3 pb-2 pt-1.5">
@@ -30,6 +36,10 @@ export function PlayerDock({
         <div className="flex gap-2" aria-label={`촛불 ${candles}개`}>
           {[0, 1, 2].map((i) => {
             const lit = i < candles
+            const justOut =
+              extinguishing &&
+              i >= resolve.candlesAfter &&
+              i < resolve.candlesBefore
             return (
               <div key={i} className="relative flex h-8 w-5 flex-col items-center">
                 {lit && (
@@ -41,6 +51,14 @@ export function PlayerDock({
                     }}
                     transition={{ duration: 0.9, repeat: Infinity }}
                     style={{ boxShadow: '0 0 10px rgba(232,168,86,0.7)' }}
+                  />
+                )}
+                {justOut && (
+                  <motion.div
+                    className="absolute -top-1 h-4 w-3 rounded-full bg-ink-muted/40"
+                    initial={{ opacity: 0.8, y: 0, scaleY: 1 }}
+                    animate={{ opacity: 0, y: -10, scaleY: 1.6 }}
+                    transition={{ duration: 0.7 }}
                   />
                 )}
                 <div

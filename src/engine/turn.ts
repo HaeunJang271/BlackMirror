@@ -12,6 +12,7 @@ export function createEmptyTurn(): TurnState {
     bloodPactActive: false,
     ashBreathArmed: false,
     forbiddenHandBonus: 0,
+    timerStarted: false,
   }
 }
 

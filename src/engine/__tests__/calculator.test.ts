@@ -161,7 +161,9 @@ describe('소금의 원 저주 방어', () => {
     const hpBefore = state.bossHp
     state = gameReducer(state, { type: 'FLIP_CARD', cardId: curseId })
 
-    // 촛불 유지, 데미지 적용(즉시 정산), 저주 카운트는 방어라 증가하지 않음
+    // 소금의 원 → 즉시 정산 RESOLVING, 촛불 유지·저주 카운트 미증가
+    expect(state.phase).toBe('RESOLVING')
+    expect(state.resolve?.kind).toBe('cash_out')
     expect(state.candles).toBe(3)
     expect(state.cursesHitThisRun).toBe(0)
     expect(state.lastDamage).toBeGreaterThan(0)

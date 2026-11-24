@@ -1,14 +1,33 @@
 /** 중앙 판 카드의 앞면 종류 */
 export type CardFace = 'truth' | 'curse'
 
-/** 게임 페이즈 (Phase 1 상태 머신) */
+/** 게임 페이즈 (Phase 2: RESOLVING 인터미션 포함) */
 export type GamePhase =
   | 'TITLE'
   | 'STAGE_INTRO'
   | 'PLAYER_TURN'
+  | 'RESOLVING'
   | 'REWARD'
   | 'VICTORY'
   | 'GAME_OVER'
+
+/** 결과 연출 종류 */
+export type ResolveKind = 'cash_out' | 'curse' | 'timeout'
+
+/** RESOLVING 종료 후 이동할 곳 */
+export type ResolveNext = 'round' | 'reward' | 'game_over'
+
+/** 인터미션에 보여줄 결과 정보 */
+export interface ResolveInfo {
+  kind: ResolveKind
+  damage: number
+  message: string | null
+  candlesBefore: number
+  candlesAfter: number
+  next: ResolveNext
+  /** 연출 시간(ms) */
+  durationMs: number
+}
 
 /** 의식 카드 ID */
 export type RitualId =
@@ -86,6 +105,8 @@ export interface TurnState {
   ashBreathArmed: boolean
   /** 금단의 손으로 복사된 추가 점수 */
   forbiddenHandBonus: number
+  /** 첫 패 플립 이후 타이머 가동 */
+  timerStarted: boolean
 }
 
 /** 보상 선택지 */
@@ -107,12 +128,10 @@ export interface GameState {
   cursesHitThisRun: number
   ashBreathUsedThisRun: boolean
   reward: RewardOffer | null
-  /** 선택된 투시 대상 카드 id (UI 하이라이트용) */
   lastPeekCardId: string | null
-  /** 최근 정산 데미지 (연출용) */
   lastDamage: number
-  /** 저주 적중 플래시 연출용 */
   curseFlash: boolean
+  resolve: ResolveInfo | null
   round: number
   rngSeed: number
 }
@@ -126,6 +145,7 @@ export type GameAction =
   | { type: 'USE_RITUAL'; ritualId: RitualId; targetCardId?: string }
   | { type: 'SELECT_REWARD'; relicId: RelicId; ritualId: RitualId }
   | { type: 'TIMER_EXPIRED' }
+  | { type: 'FINISH_RESOLVE' }
   | { type: 'CLEAR_CURSE_FLASH' }
   | { type: 'REVIVE_AD' }
   | { type: 'BACK_TO_TITLE' }

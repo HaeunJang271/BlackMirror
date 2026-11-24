@@ -21,7 +21,9 @@ export function OverlayScreens({
   onRetry,
   onRevive,
 }: OverlayScreensProps) {
-  if (phase === 'PLAYER_TURN' || phase === 'REWARD') return null
+  if (phase === 'PLAYER_TURN' || phase === 'RESOLVING' || phase === 'REWARD') {
+    return null
+  }
 
   return (
     <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/80 px-6">

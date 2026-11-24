@@ -1,21 +1,32 @@
 import { motion } from 'framer-motion'
 import type { BossDef } from '../types/game'
+import { BossSigil } from './BossSigil'
 
 interface StageHeaderProps {
   boss: BossDef
   bossHp: number
   stageIndex: number
+  hitFlash?: boolean
 }
 
 /**
- * 상단 25%: 계약자·대사·봉인 게이지·기믹 배지.
+ * 상단 25%: 계약자·대사·봉인 게이지·기믹 배지·시길.
  */
-export function StageHeader({ boss, bossHp, stageIndex }: StageHeaderProps) {
+export function StageHeader({
+  boss,
+  bossHp,
+  stageIndex,
+  hitFlash = false,
+}: StageHeaderProps) {
   const ratio = Math.max(0, bossHp / boss.maxHp)
 
   return (
-    <header className="flex h-[25%] flex-col justify-between px-4 pb-2 pt-3">
-      <div className="flex items-start justify-between gap-3">
+    <motion.header
+      className="flex h-[25%] flex-col justify-between px-4 pb-2 pt-3"
+      animate={hitFlash ? { x: [-6, 6, -4, 4, 0] } : { x: 0 }}
+      transition={{ duration: 0.55 }}
+    >
+      <div className="flex items-start justify-between gap-3 pr-8">
         <div className="min-w-0">
           <p className="text-[10px] tracking-[0.2em] text-ink-muted uppercase">
             계약자 {stageIndex + 1} / 3
@@ -28,13 +39,7 @@ export function StageHeader({ boss, bossHp, stageIndex }: StageHeaderProps) {
           </p>
         </div>
 
-        {/* 실루엣 */}
-        <div
-          className="relative h-16 w-14 shrink-0 rounded-t-full bg-gradient-to-b from-[#2a2218] to-transparent opacity-80"
-          aria-hidden
-        >
-          <div className="absolute inset-x-2 top-2 h-8 rounded-full bg-[#1a1510] shadow-[0_0_20px_rgba(197,160,89,0.15)]" />
-        </div>
+        <BossSigil bossId={boss.id} hitFlash={hitFlash} />
       </div>
 
       <div className="space-y-1.5">
@@ -56,6 +61,6 @@ export function StageHeader({ boss, bossHp, stageIndex }: StageHeaderProps) {
           {boss.gimmickBadge}
         </span>
       </div>
-    </header>
+    </motion.header>
   )
 }
