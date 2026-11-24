@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { RELICS } from '../data/relics'
 import { RITUALS } from '../data/rituals'
 import type { BoardCard, BossDef, RelicId, RitualId } from '../types/game'
+
 interface GameHudProps {
   boss: BossDef
   bossHp: number
@@ -37,7 +38,7 @@ export function countRemainingFaces(board: BoardCard[]): {
 }
 
 /**
- * 3D 씬 위 반투명 2D HUD.
+ * 3D 씬 위 반투명 2D HUD (상·하단 중앙 정렬).
  */
 export function GameHud({
   boss,
@@ -60,11 +61,11 @@ export function GameHud({
 
   return (
     <div className="pointer-events-none absolute inset-0 z-10 flex flex-col justify-between">
-      {/* 상단 */}
-      <div className="px-4 pt-10">
+      {/* 상단 — 중앙 정렬 */}
+      <div className="mx-auto w-full max-w-md px-4 pt-10">
         <div className="rounded-sm border border-brass/25 bg-black/45 px-3 py-2 backdrop-blur-[2px]">
           <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
+            <div className="min-w-0 text-left">
               <p className="text-[10px] tracking-[0.2em] text-ink-muted">
                 계약자 {stageIndex + 1} / 3
               </p>
@@ -93,9 +94,10 @@ export function GameHud({
             />
           </div>
 
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+          <div className="mt-2 flex flex-wrap items-center justify-center gap-3 text-[11px]">
             <span>
-              진실 <span className="brass-text tabular-nums">{remaining.truth}</span>
+              진실{' '}
+              <span className="brass-text tabular-nums">{remaining.truth}</span>
               <span className="text-ink-muted"> / </span>
               저주{' '}
               <span className="text-curse-glow tabular-nums">{remaining.curse}</span>
@@ -115,11 +117,13 @@ export function GameHud({
         </div>
       </div>
 
-      {/* 하단 */}
-      <div className="space-y-2 px-3 pb-3">
+      {/* 하단 — 중앙 정렬 */}
+      <div className="mx-auto w-full max-w-md space-y-2 px-3 pb-3">
         <div className="flex items-end justify-between gap-3 rounded-sm border border-brass/20 bg-black/50 px-3 py-2">
           <div>
-            <p className="text-[10px] tracking-widest text-ink-muted">예상 데미지</p>
+            <p className="text-[10px] tracking-widest text-ink-muted">
+              예상 데미지
+            </p>
             <p className="font-[family-name:var(--font-display)] text-3xl brass-text tabular-nums">
               {expectedDamage}
               <span className="ml-2 text-base text-ink-muted">
@@ -137,14 +141,14 @@ export function GameHud({
           </button>
         </div>
 
-        <div className="flex gap-1">
+        <div className="flex justify-center gap-1">
           {Array.from({ length: 4 }).map((_, i) => {
             const id = relics[i]
             const def = id ? RELICS[id] : null
             return (
               <div
                 key={i}
-                className="flex h-8 flex-1 items-center justify-center rounded-sm border border-brass/30 bg-black/45 text-[9px] text-brass"
+                className="flex h-8 w-12 items-center justify-center rounded-sm border border-brass/30 bg-black/45 text-[9px] text-brass"
                 title={def ? `${def.name}: ${def.description}` : undefined}
               >
                 {def ? def.name.slice(0, 2) : '·'}
@@ -153,7 +157,7 @@ export function GameHud({
           })}
         </div>
 
-        <div className="grid grid-cols-2 gap-1.5">
+        <div className="mx-auto grid w-full max-w-sm grid-cols-2 gap-1.5">
           {hand.map((id) => {
             const ritual = RITUALS[id]
             return (

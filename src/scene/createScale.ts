@@ -14,7 +14,7 @@ export interface ScaleRig {
  */
 export function createScale(): ScaleRig {
   const group = new THREE.Group()
-  group.position.set(1.35, 0.08, 0.15)
+  group.position.set(1.05, 0.08, -0.05)
 
   const brass = new THREE.MeshStandardMaterial({
     color: 0xc5a059,

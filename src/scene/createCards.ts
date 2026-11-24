@@ -40,7 +40,8 @@ export interface CardsRig {
  */
 export function createCards(): CardsRig {
   const group = new THREE.Group()
-  group.position.set(0, 0.08, 0.35)
+  // 테이블 중앙 쪽 — 화면 세로 45~68% 밴드에 오도록
+  group.position.set(0, 0.09, -0.12)
 
   const backTex = createCardBackTexture()
   const truthTex = createTruthFaceTexture()

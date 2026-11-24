@@ -19,7 +19,8 @@ export interface CandleRig {
  */
 export function createCandles(): CandleRig {
   const group = new THREE.Group()
-  group.position.set(-1.55, 0.06, 0.35)
+  // 화면 안쪽으로 모아 3개 모두 보이게
+  group.position.set(-0.88, 0.06, 0.05)
 
   const flames: THREE.Mesh[] = []
   const lights: THREE.PointLight[] = []
@@ -27,7 +28,7 @@ export function createCandles(): CandleRig {
 
   for (let i = 0; i < 3; i += 1) {
     const candle = new THREE.Group()
-    candle.position.set(i * 0.28, 0, i * -0.12)
+    candle.position.set(i * 0.16, 0, 0)
 
     const body = new THREE.Mesh(
       new THREE.CylinderGeometry(0.035, 0.04, 0.22, 10),

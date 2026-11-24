@@ -21,7 +21,8 @@ export interface BossRig {
  */
 export function createBoss(): BossRig {
   const group = new THREE.Group()
-  group.position.set(0, 0.55, -1.55)
+  // 상단 HUD 아래(화면 15~40%)에 얼굴·상체가 들어오도록 낮춤
+  group.position.set(0, 0.08, -1.35)
 
   const torso = new THREE.Mesh(
     new THREE.CapsuleGeometry(0.28, 0.55, 4, 10),
@@ -56,7 +57,8 @@ export function createBoss(): BossRig {
 
   let hitUntil = 0
   let nodUntil = 0
-  let baseY = group.position.y
+  const baseY = group.position.y
+  const baseZ = group.position.z
 
   function clearAccessory() {
     while (accessory.children.length > 0) {
@@ -139,14 +141,14 @@ export function createBoss(): BossRig {
       if (t < hitUntil) {
         const k = (hitUntil - t) / 0.55
         group.rotation.x = -0.35 * k
-        group.position.z = -1.55 - 0.12 * k
+        group.position.z = baseZ - 0.12 * k
       } else if (t < nodUntil) {
         const k = Math.sin(((nodUntil - t) / 0.7) * Math.PI)
         group.rotation.x = 0.28 * k
-        group.position.z = -1.55
+        group.position.z = baseZ
       } else {
         group.rotation.x = THREE.MathUtils.lerp(group.rotation.x, 0, 0.08)
-        group.position.z = THREE.MathUtils.lerp(group.position.z, -1.55, 0.08)
+        group.position.z = THREE.MathUtils.lerp(group.position.z, baseZ, 0.08)
       }
     },
   }

@@ -59,9 +59,10 @@ export class SceneController {
     this.scene.fog = new THREE.FogExp2(0x050404, 0.085)
     this.scene.background = new THREE.Color(0x050404)
 
-    this.camera = new THREE.PerspectiveCamera(48, 1, 0.1, 40)
-    this.camera.position.set(0, 1.35, 1.85)
-    this.camera.lookAt(0, 0.55, -0.4)
+    // 카드를 화면 세로 45~68%, 보스를 상단 HUD 아래 15~40%에 두도록 뒤로 물러선 1인칭
+    this.camera = new THREE.PerspectiveCamera(46, 1, 0.1, 40)
+    this.camera.position.set(0, 1.62, 2.45)
+    this.camera.lookAt(0, 0.78, -0.55)
 
     this.buildWorld()
     this.bindEvents(canvas)
@@ -90,6 +91,14 @@ export class SceneController {
     const fill = new THREE.PointLight(0x2a2218, 0.25, 6)
     fill.position.set(0.8, 1.2, 1.2)
     this.scene.add(fill)
+
+    // 보스 어깨·가면 윤곽용 약한 림 라이트
+    const rim = new THREE.PointLight(0xc5a059, 0.45, 3.8, 2)
+    rim.position.set(0.35, 1.15, -2.15)
+    this.scene.add(rim)
+    const rimFill = new THREE.PointLight(0x8a7040, 0.22, 3.2, 2)
+    rimFill.position.set(-0.55, 0.95, -2.05)
+    this.scene.add(rimFill)
   }
 
   private bindEvents(canvas: HTMLCanvasElement) {
@@ -151,11 +160,15 @@ export class SceneController {
 
     const shake = this.hitPulse ? Math.sin(t * 40) * 0.012 : 0
     this.camera.position.set(
-      0 + this.parallax.x + shake,
-      1.35 + this.parallax.y * 0.4,
-      1.85,
+      this.parallax.x + shake,
+      1.62 + this.parallax.y * 0.35,
+      2.45,
     )
-    this.camera.lookAt(this.parallax.x * 0.5, 0.55 + this.parallax.y, -0.4)
+    this.camera.lookAt(
+      this.parallax.x * 0.45,
+      0.78 + this.parallax.y * 0.25,
+      -0.55,
+    )
 
     this.boss.update(t, { hit: this.hitPulse, nod: this.nodPulse })
     this.hitPulse = false
