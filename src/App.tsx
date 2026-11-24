@@ -1,7 +1,6 @@
 import { useEffect, useReducer, useRef, useState } from 'react'
 import { FilmGrain } from './components/FilmGrain'
 import { GameHud } from './components/GameHud'
-import { MuteButton } from './components/MuteButton'
 import { OverlayScreens } from './components/OverlayScreens'
 import { ResolveOverlay } from './components/ResolveOverlay'
 import { RewardModal } from './components/RewardModal'
@@ -192,10 +191,6 @@ export default function App() {
           }}
         />
       )}
-
-      <div className="pointer-events-none absolute inset-0 z-20">
-        <MuteButton />
-      </div>
 
       {showHud && (
         <GameHud

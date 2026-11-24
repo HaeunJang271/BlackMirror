@@ -25,7 +25,7 @@ export const RITUALS: Record<RitualId, RitualDef> = {
   ash_breath: {
     id: 'ash_breath',
     name: '재의 숨결',
-    description: '정산 성공 시 꺼진 촛불 1개 재점화. (런 1회)',
+    description: '꺼진 촛불 1개를 즉시 재점화한다. (런 1회)',
   },
   forbidden_hand: {
     id: 'forbidden_hand',

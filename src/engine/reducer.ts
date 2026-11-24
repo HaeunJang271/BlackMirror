@@ -36,6 +36,7 @@ export function createInitialState(seed = Date.now()): GameState {
     turn: createEmptyTurn(),
     cursesHitThisRun: 0,
     ashBreathUsedThisRun: false,
+    ashBreathPending: false,
     reward: null,
     lastPeekCardId: null,
     lastDamage: 0,
@@ -159,10 +160,14 @@ function applyCashOut(
   const breakdown = calculateDamage(toDamageInput(state))
   let candles = state.candles
   let ashBreathUsedThisRun = state.ashBreathUsedThisRun
+  let ashBreathPending = state.ashBreathPending || state.turn.ashBreathArmed
 
-  if (state.turn.ashBreathArmed && candles < MAX_CANDLES) {
+  // 정산 성공 시에만 재점화. 촛불이 이미 풀이면 pending 유지.
+  if (ashBreathPending && candles < MAX_CANDLES) {
     candles = Math.min(MAX_CANDLES, candles + 1)
     ashBreathUsedThisRun = true
+    ashBreathPending = false
+    log('info', 'ash breath relight on cash out', { candles })
   }
 
   const bossHp = Math.max(0, state.bossHp - breakdown.finalDamage)
@@ -175,6 +180,7 @@ function applyCashOut(
       bossHp,
       candles,
       ashBreathUsedThisRun,
+      ashBreathPending,
       lastDamage: breakdown.finalDamage,
       curseFlash: false,
     },
@@ -307,9 +313,32 @@ function useRitual(
       return { ...next, turn: { ...next.turn, bloodPactActive: true } }
     case 'swapped_card':
       return { ...next, board: removeOneUnopenedCurse(next.board) }
-    case 'ash_breath':
-      if (state.ashBreathUsedThisRun) return state
-      return { ...next, turn: { ...next.turn, ashBreathArmed: true } }
+    case 'ash_breath': {
+      // 이미 썼거나 대기 중이면 손패를 깎지 않음
+      if (state.ashBreathUsedThisRun || state.ashBreathPending) return state
+      // 꺼진 촛불이 있으면 즉시 재점화
+      if (state.candles < MAX_CANDLES) {
+        const candles = Math.min(MAX_CANDLES, state.candles + 1)
+        log('info', 'ash breath immediate relight', {
+          from: state.candles,
+          to: candles,
+        })
+        return {
+          ...next,
+          candles,
+          ashBreathUsedThisRun: true,
+          ashBreathPending: false,
+          turn: { ...next.turn, ashBreathArmed: false },
+        }
+      }
+      // 촛불이 풀이면 다음 성공 정산 때 재점화되도록 대기
+      log('info', 'ash breath pending (candles full)')
+      return {
+        ...next,
+        ashBreathPending: true,
+        turn: { ...next.turn, ashBreathArmed: true },
+      }
+    }
     case 'forbidden_hand': {
       const scores = next.turn.openedTruthBaseScores
       if (scores.length === 0) return state

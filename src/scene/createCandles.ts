@@ -42,7 +42,6 @@ export function createCandles(): CandleRig {
   const states: CandleState[] = []
   const smokes: SmokePuff[] = []
   let prevT = 0
-  let litCount = 3
 
   for (let i = 0; i < 3; i += 1) {
     const candle = new THREE.Group()
@@ -151,13 +150,11 @@ export function createCandles(): CandleRig {
     lights,
     setLitCount(count: number) {
       const next = Math.max(0, Math.min(3, count))
-      if (next < litCount) {
-        for (let i = next; i < litCount; i += 1) {
-          startExtinguish(i)
-        }
-      } else if (next > litCount) {
-        for (let i = litCount; i < next; i += 1) {
-          const st = states[i]!
+      for (let i = 0; i < 3; i += 1) {
+        const st = states[i]!
+        if (i < next) {
+          // 켜야 함 — 매 동기화마다 강제 점화(연출 레이스 방지)
+          const wasOut = !st.lit || st.extinguishing || !flames[i]!.visible
           st.lit = true
           st.extinguishing = false
           st.extinguishT = 0
@@ -168,9 +165,11 @@ export function createCandles(): CandleRig {
           mat.emissiveIntensity = 2.2
           lights[i]!.intensity = st.baseIntensity
           applyBaseLook(i, true)
+          if (wasOut) log('info', 'candle relight', { index: i, count: next })
+        } else if (st.lit && !st.extinguishing) {
+          startExtinguish(i)
         }
       }
-      litCount = next
     },
     update(t: number) {
       const dt = prevT === 0 ? 0.016 : Math.min(0.05, t - prevT)

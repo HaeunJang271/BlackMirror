@@ -129,6 +129,8 @@ export interface GameState {
   turn: TurnState
   cursesHitThisRun: number
   ashBreathUsedThisRun: boolean
+  /** 재의 숨결 사용 후, 다음 성공 정산까지 유지 */
+  ashBreathPending: boolean
   reward: RewardOffer | null
   lastPeekCardId: string | null
   lastDamage: number
