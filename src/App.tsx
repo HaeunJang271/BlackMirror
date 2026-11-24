@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { useEffect, useReducer, useRef } from 'react'
+import { useEffect, useReducer, useRef, useState } from 'react'
 import { OverlayScreens } from './components/OverlayScreens'
 import { PlayerDock } from './components/PlayerDock'
 import { RewardModal } from './components/RewardModal'
@@ -25,19 +25,31 @@ export default function App() {
   const boss = getBoss(Math.min(state.stageIndex, 2))
   const breakdown = calculateDamage(toDamageInput(state))
   const playing = state.phase === 'PLAYER_TURN'
+  const [timerSec, setTimerSec] = useState<number | null>(null)
 
-  // 시계공 10초 타이머: 만료 시 강제 정산(점수 없으면 저주 처리에 가까운 종료)
+  // 시계공 10초 카운트다운 표시 + 만료 시 강제 정산
   useEffect(() => {
-    if (!playing || !boss.turnTimerSec) return
-    const ms = boss.turnTimerSec * 1000
-    const id = window.setTimeout(() => {
-      log('info', 'turn timer expired')
-      if (canCashOut(state.turn.consecutiveTruths)) {
-        dispatch({ type: 'CASH_OUT' })
+    if (!playing || !boss.turnTimerSec) {
+      setTimerSec(null)
+      return
+    }
+
+    const limit = boss.turnTimerSec
+    setTimerSec(limit)
+    const startedAt = Date.now()
+
+    const tick = window.setInterval(() => {
+      const left = Math.max(0, limit - Math.floor((Date.now() - startedAt) / 1000))
+      setTimerSec(left)
+      if (left <= 0) {
+        window.clearInterval(tick)
+        log('info', 'turn timer expired')
+        dispatch({ type: 'TIMER_EXPIRED' })
       }
-    }, ms)
-    return () => window.clearTimeout(id)
-  }, [playing, boss.turnTimerSec, state.round, state.turn.consecutiveTruths])
+    }, 200)
+
+    return () => window.clearInterval(tick)
+  }, [playing, boss.turnTimerSec, state.round])
 
   useEffect(() => {
     if (!state.curseFlash) return
@@ -48,10 +60,15 @@ export default function App() {
     return () => window.clearTimeout(id)
   }, [state.curseFlash])
 
+  const displayMult =
+    breakdown.comboMultiplier *
+    breakdown.ritualMultiplier *
+    breakdown.relicMultiplier
+
   return (
     <div className="desk-grain mx-auto flex h-[100dvh] w-full max-w-md flex-col overflow-hidden">
       <motion.div
-        className="relative flex h-full flex-col"
+        className="relative flex h-full min-h-0 flex-col"
         animate={
           state.lastDamage > 0 && playing
             ? { x: [0, -4, 4, -2, 0] }
@@ -68,10 +85,11 @@ export default function App() {
         <ScaleBoard
           board={state.board}
           expectedDamage={playing ? breakdown.finalDamage : 0}
-          multiplier={playing ? breakdown.comboMultiplier * breakdown.ritualMultiplier * breakdown.relicMultiplier : 1}
+          multiplier={playing ? displayMult : 1}
           canCashOut={playing && canCashOut(state.turn.consecutiveTruths)}
           flipDisabled={!playing}
           lastDamage={state.lastDamage}
+          timerSec={playing ? timerSec : null}
           onFlip={(cardId) => dispatch({ type: 'FLIP_CARD', cardId })}
           onCashOut={() => dispatch({ type: 'CASH_OUT' })}
         />
@@ -97,7 +115,8 @@ export default function App() {
             className="pointer-events-none absolute inset-0 z-20"
             style={{
               boxShadow: 'inset 0 0 80px rgba(139,30,30,0.85)',
-              background: 'radial-gradient(circle, transparent 40%, rgba(139,30,30,0.35) 100%)',
+              background:
+                'radial-gradient(circle, transparent 40%, rgba(139,30,30,0.35) 100%)',
             }}
           />
         )}

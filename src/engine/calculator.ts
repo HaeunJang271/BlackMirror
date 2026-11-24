@@ -24,7 +24,8 @@ export function getComboMultiplier(
   options: { rustyWeight?: boolean; bossThirdSuccessBonus?: number } = {},
 ): number {
   if (consecutiveTruths <= 0) {
-    return options.rustyWeight ? 1.5 : 0
+    // 시작 표시·녹슨 저울추: 미오픈 상태에서도 ×1.0 (또는 ×1.5)로 둔다
+    return options.rustyWeight ? 1.5 : 1.0
   }
   const idx = Math.min(consecutiveTruths, COMBO_MULTIPLIERS.length) - 1
   let mult: number = COMBO_MULTIPLIERS[idx]!

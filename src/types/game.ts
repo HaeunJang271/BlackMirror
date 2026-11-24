@@ -125,7 +125,7 @@ export type GameAction =
   | { type: 'CASH_OUT' }
   | { type: 'USE_RITUAL'; ritualId: RitualId; targetCardId?: string }
   | { type: 'SELECT_REWARD'; relicId: RelicId; ritualId: RitualId }
-  | { type: 'TICK_TIMER' }
+  | { type: 'TIMER_EXPIRED' }
   | { type: 'CLEAR_CURSE_FLASH' }
   | { type: 'REVIVE_AD' }
   | { type: 'BACK_TO_TITLE' }

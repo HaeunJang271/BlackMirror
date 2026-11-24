@@ -313,9 +313,24 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return beginPlayerTurn({ ...state, candles: 1, phase: 'PLAYER_TURN' })
     case 'BACK_TO_TITLE':
       return createInitialState(state.rngSeed + 1)
-    case 'TICK_TIMER':
-      // Phase 1: 타이머 만료는 UI에서 CASH_OUT/강제 종료로 연결
-      return state
+    case 'TIMER_EXPIRED': {
+      if (state.phase !== 'PLAYER_TURN') return state
+      // 점수 있으면 강제 정산, 없으면 촛불 -1 후 다음 라운드
+      if (canCashOut(state.turn.consecutiveTruths)) {
+        return applyCashOut(state)
+      }
+      const candles = Math.max(0, state.candles - 1)
+      if (candles <= 0) {
+        return {
+          ...state,
+          candles: 0,
+          curseFlash: true,
+          phase: 'GAME_OVER',
+          turn: createEmptyTurn(),
+        }
+      }
+      return beginPlayerTurn({ ...state, candles, curseFlash: true })
+    }
     default:
       return state
   }

@@ -35,6 +35,7 @@ describe('기본 콤보 배수', () => {
     expect(getCardBaseScore(3)).toBe(20)
     expect(getCardBaseScore(4)).toBe(30)
 
+    expect(getComboMultiplier(0)).toBe(1.0)
     expect(getComboMultiplier(1)).toBe(1.0)
     expect(getComboMultiplier(2)).toBe(1.5)
     expect(getComboMultiplier(3)).toBe(2.5)
