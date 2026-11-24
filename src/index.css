@@ -57,3 +57,10 @@
     text-shadow: 0 0 12px rgba(197, 160, 89, 0.35);
   }
 }
+
+.touch-hint { display: inline; }
+.mouse-hint { display: none; }
+@media (min-width: 640px) and (hover: hover) and (pointer: fine) {
+  .touch-hint { display: none; }
+  .mouse-hint { display: inline; }
+}

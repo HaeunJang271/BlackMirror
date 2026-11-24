@@ -181,6 +181,7 @@ export class SceneController {
     this.camera.fov = this.framing.fov
     this.camera.updateProjectionMatrix()
     this.cards.setMobileLayout(mobile)
+    this.ceilingLamp.setMobileLayout(mobile)
   }
 
   private readonly resize = () => {

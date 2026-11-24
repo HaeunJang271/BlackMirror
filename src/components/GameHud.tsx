@@ -62,7 +62,7 @@ export function GameHud({
 
   return (
     <div className="pointer-events-none absolute inset-0 z-10 flex flex-col">
-      <div className="shrink-0 border-b border-brass/25 bg-black/70 px-3 pb-1 pt-[max(0.75rem,env(safe-area-inset-top))] sm:hidden">
+      <div className="mx-3 w-auto shrink-0 border-b border-brass/25 bg-black/70 px-3 pb-1 pt-[max(0.75rem,env(safe-area-inset-top))] sm:hidden">
         <div className="flex h-8 items-center gap-2 pr-10 text-[12px]">
           <span className="min-w-0 truncate font-medium text-ink">{boss.name}</span>
           <span className="truncate text-brass">{boss.gimmickBadge}</span>
@@ -77,7 +77,7 @@ export function GameHud({
         </div>
       </div>
       {/* 오른쪽 컬럼: 보스스탯 → 스킬설명 → 스킬창 */}
-      <div className="ml-auto flex min-h-0 flex-1 w-full max-w-[36.4rem] flex-col px-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:h-full sm:px-4 sm:pt-[max(2.5rem,env(safe-area-inset-top))]">
+      <div className="flex min-h-0 w-full flex-1 flex-col px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:ml-auto sm:h-full sm:max-w-[36.4rem] sm:px-4 sm:pt-[max(2.5rem,env(safe-area-inset-top))]">
         {/* 보스 스탯 */}
         <div className="hidden w-full max-w-[31.2rem] shrink-0 self-end rounded-sm border border-brass/25 bg-black/45 px-4 py-2.5 backdrop-blur-[2px] sm:block">
           <div className="flex items-start justify-between gap-2">
@@ -139,7 +139,7 @@ export function GameHud({
 
         {/* 스킬 설명 — 스킬창 바로 위 */}
         <div
-          className="mb-1 w-full max-w-[31.2rem] shrink-0 self-end rounded-sm border border-brass/20 px-2 py-1 sm:mb-1.5 sm:px-4 sm:py-2.5"
+          className="mb-1 w-full max-w-none shrink-0 self-end rounded-sm border border-brass/20 sm:max-w-[31.2rem] px-2 py-1 sm:mb-1.5 sm:px-4 sm:py-2.5"
           style={{
             background: 'rgba(12, 10, 8, 0.55)',
             boxShadow: tip
@@ -160,14 +160,14 @@ export function GameHud({
             </>
           ) : (
             <p className="text-[11px] text-[#9a8b72]/70 sm:text-[14.52px]">
-              <span className="sm:hidden">아이콘을 탭하면 설명, 한 번 더 누르면 사용</span><span className="hidden sm:inline">의식·유물 아이콘에 올리면 설명이 표시됩니다</span>
+              <span className="touch-hint">아이콘을 탭하면 설명, 한 번 더 누르면 사용</span><span className="mouse-hint">의식·유물 아이콘에 올리면 설명이 표시됩니다</span>
             </p>
           )}
         </div>
 
         {/* 하단 스킬창 */}
         <div
-          className="w-full max-w-[31.2rem] shrink-0 space-y-1 self-end rounded-sm p-1.5 sm:space-y-2.5 sm:p-2.5"
+          className="w-full max-w-none shrink-0 space-y-1 self-end sm:max-w-[31.2rem] rounded-sm p-1.5 sm:space-y-2.5 sm:p-2.5"
           style={{
             background:
               'linear-gradient(180deg, rgba(42,34,24,0.72) 0%, rgba(22,18,14,0.82) 100%)',
@@ -198,7 +198,7 @@ export function GameHud({
           </div>
 
           <div className="flex items-center justify-between gap-2 sm:block">
-          <div className="flex gap-1 sm:justify-end sm:gap-2" aria-label="의식">
+          <div className="grid min-w-0 flex-1 grid-cols-4 gap-1 sm:flex sm:justify-end sm:gap-2" aria-label="의식">
             {Array.from({ length: 4 }).map((_, i) => {
               const id = hand[i]
               const ritual = id ? RITUALS[id] : null
@@ -234,7 +234,7 @@ export function GameHud({
                   }}
                   onBlur={() => { if (pointerType.current === 'mouse') setTip(null) }}
                   aria-label={ritual?.name ?? '빈 의식 슬롯'}
-                  className={`pointer-events-auto flex h-9 w-9 items-center justify-center rounded-sm border bg-[#2c241a]/95 text-[#e8c878] disabled:opacity-35 sm:h-14 sm:w-14 ${selected === `ritual-${id}` ? 'border-wax ring-2 ring-wax/70' : 'border-brass/50'}`}
+                  className={`pointer-events-auto flex h-11 w-full min-w-0 items-center justify-center rounded-sm border bg-[#2c241a]/95 text-[#e8c878] disabled:opacity-35 sm:h-14 sm:w-14 ${selected === `ritual-${id}` ? 'border-wax ring-2 ring-wax/70' : 'border-brass/50'}`}
                 >
                   {Icon ? <Icon className="h-5 w-5 sm:h-7 sm:w-7" strokeWidth={1.75} /> : null}
                 </button>
@@ -242,7 +242,7 @@ export function GameHud({
             })}
           </div>
 
-          <div className="flex gap-1 sm:mt-2.5 sm:justify-end sm:gap-1.5" aria-label="유물">
+          <div className="grid min-w-0 flex-1 grid-cols-4 gap-1 sm:mt-2.5 sm:flex sm:justify-end sm:gap-1.5" aria-label="유물">
             {Array.from({ length: 4 }).map((_, i) => {
               const id = relics[i]
               const def = id ? RELICS[id] : null
@@ -253,7 +253,7 @@ export function GameHud({
                   type="button"
                   disabled={!def}
                   onClick={() => { if (id && def) showTip(`relic-${id}`, def) }}
-                  className={`pointer-events-auto flex h-9 w-9 items-center justify-center rounded-sm border bg-[#2a2218] text-[#e8c878] sm:h-10 sm:w-10 ${selected === `relic-${id}` ? 'border-wax ring-2 ring-wax/70' : 'border-brass/40'}`}
+                  className={`pointer-events-auto flex h-11 w-full min-w-0 items-center justify-center rounded-sm border bg-[#2a2218] text-[#e8c878] sm:h-10 sm:w-10 ${selected === `relic-${id}` ? 'border-wax ring-2 ring-wax/70' : 'border-brass/40'}`}
                   aria-label={def?.name ?? '빈 유물 슬롯'}
                   onPointerEnter={(event) => {
                     if (event.pointerType === 'mouse' && def) {

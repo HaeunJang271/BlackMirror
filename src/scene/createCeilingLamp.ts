@@ -4,6 +4,7 @@ import { createBrassTexture, texturedMat } from './materialFactory'
 export interface CeilingLampRig {
   group: THREE.Group
   spot: THREE.SpotLight
+  setMobileLayout: (mobile: boolean) => void
   /**
    * 전구 미세 깜빡임.
    */
@@ -105,6 +106,9 @@ export function createCeilingLamp(): CeilingLampRig {
   return {
     group,
     spot,
+    setMobileLayout(mobile: boolean) {
+      for (const mesh of [cord, rod, shade, shadeInner, rim, bulb]) mesh.visible = !mobile
+    },
     update(t: number) {
       const flicker =
         1.7 + Math.sin(t * 7.5) * 0.1 + Math.sin(t * 13.1) * 0.05
