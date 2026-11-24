@@ -1,0 +1,52 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-desk: #0d0b0a;
+  --color-desk-lift: #161210;
+  --color-brass: #c5a059;
+  --color-brass-dim: #8a7040;
+  --color-wax: #e8a856;
+  --color-wax-glow: #f0c078;
+  --color-curse: #8b1e1e;
+  --color-curse-glow: #b02828;
+  --color-ink: #e8dcc8;
+  --color-ink-muted: #9a8b72;
+  --font-display: 'Cormorant Garamond', 'Times New Roman', serif;
+  --font-body: 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: var(--color-desk);
+    color: var(--color-ink);
+    font-family: var(--font-body);
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+}
+
+@layer utilities {
+  .desk-grain {
+    background-color: var(--color-desk);
+    background-image:
+      radial-gradient(ellipse at 50% 0%, rgba(197, 160, 89, 0.08), transparent 55%),
+      repeating-linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.015) 0px,
+        rgba(255, 255, 255, 0.015) 1px,
+        transparent 1px,
+        transparent 3px
+      ),
+      linear-gradient(180deg, #120f0d 0%, #0d0b0a 40%, #0a0807 100%);
+  }
+
+  .brass-text {
+    color: var(--color-brass);
+    text-shadow: 0 0 12px rgba(197, 160, 89, 0.35);
+  }
+}

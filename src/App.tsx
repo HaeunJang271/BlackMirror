@@ -1,0 +1,135 @@
+import { motion } from 'framer-motion'
+import { useEffect, useReducer, useRef } from 'react'
+import { OverlayScreens } from './components/OverlayScreens'
+import { PlayerDock } from './components/PlayerDock'
+import { RewardModal } from './components/RewardModal'
+import { ScaleBoard } from './components/ScaleBoard'
+import { StageHeader } from './components/StageHeader'
+import { getBoss } from './data/bosses'
+import { calculateDamage, canCashOut } from './engine/calculator'
+import {
+  createInitialState,
+  gameReducer,
+  toDamageInput,
+} from './engine/reducer'
+import { log } from './utils/logger'
+
+/**
+ * 《검은 저울》 Phase 1 루트. 게임 로직은 reducer에만 둔다.
+ */
+export default function App() {
+  const [state, dispatch] = useReducer(gameReducer, undefined, () =>
+    createInitialState(20261125),
+  )
+  const revivedRef = useRef(false)
+  const boss = getBoss(Math.min(state.stageIndex, 2))
+  const breakdown = calculateDamage(toDamageInput(state))
+  const playing = state.phase === 'PLAYER_TURN'
+
+  // 시계공 10초 타이머: 만료 시 강제 정산(점수 없으면 저주 처리에 가까운 종료)
+  useEffect(() => {
+    if (!playing || !boss.turnTimerSec) return
+    const ms = boss.turnTimerSec * 1000
+    const id = window.setTimeout(() => {
+      log('info', 'turn timer expired')
+      if (canCashOut(state.turn.consecutiveTruths)) {
+        dispatch({ type: 'CASH_OUT' })
+      }
+    }, ms)
+    return () => window.clearTimeout(id)
+  }, [playing, boss.turnTimerSec, state.round, state.turn.consecutiveTruths])
+
+  useEffect(() => {
+    if (!state.curseFlash) return
+    const id = window.setTimeout(
+      () => dispatch({ type: 'CLEAR_CURSE_FLASH' }),
+      420,
+    )
+    return () => window.clearTimeout(id)
+  }, [state.curseFlash])
+
+  return (
+    <div className="desk-grain mx-auto flex h-[100dvh] w-full max-w-md flex-col overflow-hidden">
+      <motion.div
+        className="relative flex h-full flex-col"
+        animate={
+          state.lastDamage > 0 && playing
+            ? { x: [0, -4, 4, -2, 0] }
+            : { x: 0 }
+        }
+        transition={{ duration: 0.35 }}
+      >
+        <StageHeader
+          boss={boss}
+          bossHp={state.bossHp}
+          stageIndex={state.stageIndex}
+        />
+
+        <ScaleBoard
+          board={state.board}
+          expectedDamage={playing ? breakdown.finalDamage : 0}
+          multiplier={playing ? breakdown.comboMultiplier * breakdown.ritualMultiplier * breakdown.relicMultiplier : 1}
+          canCashOut={playing && canCashOut(state.turn.consecutiveTruths)}
+          flipDisabled={!playing}
+          lastDamage={state.lastDamage}
+          onFlip={(cardId) => dispatch({ type: 'FLIP_CARD', cardId })}
+          onCashOut={() => dispatch({ type: 'CASH_OUT' })}
+        />
+
+        <PlayerDock
+          candles={state.candles}
+          relics={state.relics}
+          hand={state.hand}
+          disabled={!playing}
+          onUseRitual={(ritualId) => {
+            const needsTarget = ritualId === 'clairvoyant_coin'
+            const target = state.board.find((c) => !c.revealed && !c.removed)
+            dispatch({
+              type: 'USE_RITUAL',
+              ritualId,
+              targetCardId: needsTarget ? target?.id : undefined,
+            })
+          }}
+        />
+
+        {state.curseFlash && (
+          <div
+            className="pointer-events-none absolute inset-0 z-20"
+            style={{
+              boxShadow: 'inset 0 0 80px rgba(139,30,30,0.85)',
+              background: 'radial-gradient(circle, transparent 40%, rgba(139,30,30,0.35) 100%)',
+            }}
+          />
+        )}
+
+        <OverlayScreens
+          phase={state.phase}
+          boss={boss}
+          onStart={() => {
+            revivedRef.current = false
+            dispatch({ type: 'START_RUN' })
+          }}
+          onConfirmIntro={() => dispatch({ type: 'CONFIRM_INTRO' })}
+          onRetry={() => {
+            revivedRef.current = false
+            dispatch({ type: 'BACK_TO_TITLE' })
+          }}
+          onRevive={() => {
+            if (revivedRef.current) return
+            revivedRef.current = true
+            dispatch({ type: 'REVIVE_AD' })
+          }}
+        />
+
+        {state.phase === 'REWARD' && state.reward && (
+          <RewardModal
+            offer={state.reward}
+            onConfirm={(relicId, ritualId) =>
+              dispatch({ type: 'SELECT_REWARD', relicId, ritualId })
+            }
+          />
+        )}
+      </motion.div>
+    </div>
+  )
+}
