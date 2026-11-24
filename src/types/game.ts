@@ -107,15 +107,16 @@ export interface TurnState {
   ashBreathArmed: boolean
   /** 금단의 손으로 복사된 추가 점수 */
   forbiddenHandBonus: number
-  /** 플레이어 턴 동안 타이머 가동 */
+  /** 첫 카드 또는 의식 사용 후 타이머 가동 */
   timerStarted: boolean
 }
 
 /** 보상 선택지 */
 export interface RewardOffer {
   relicOptions: RelicId[]
-  ritualOptions: RitualId[]
 }
+
+export type RewardChoice = 'rituals' | 'candle'
 
 /** 전체 게임 상태 */
 export interface GameState {
@@ -125,6 +126,8 @@ export interface GameState {
   candles: number
   board: BoardCard[]
   hand: RitualId[]
+  /** 보충 가능한 소모 의식 */
+  spentRituals: RitualId[]
   relics: RelicId[]
   turn: TurnState
   cursesHitThisRun: number
@@ -147,7 +150,7 @@ export type GameAction =
   | { type: 'FLIP_CARD'; cardId: string }
   | { type: 'CASH_OUT' }
   | { type: 'USE_RITUAL'; ritualId: RitualId; targetCardId?: string }
-  | { type: 'SELECT_REWARD'; relicId: RelicId; ritualId: RitualId }
+  | { type: 'SELECT_REWARD'; relicId: RelicId; choice: RewardChoice }
   | { type: 'TIMER_EXPIRED' }
   | { type: 'FINISH_RESOLVE' }
   | { type: 'CLEAR_CURSE_FLASH' }

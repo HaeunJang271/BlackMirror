@@ -60,22 +60,22 @@ export function GameHud({
         <div className="w-full max-w-[31.2rem] shrink-0 self-end rounded-sm border border-brass/25 bg-black/45 px-4 py-2.5 backdrop-blur-[2px]">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 text-left">
-              <p className="text-[14.3px] tracking-[0.2em] text-ink-muted">
+              <p className="text-[15.73px] tracking-[0.2em] text-ink-muted">
                 계약자 {stageIndex + 1} / 3
               </p>
-              <h1 className="truncate font-[family-name:var(--font-display)] text-[1.54rem] leading-tight text-ink">
+              <h1 className="truncate font-[family-name:var(--font-display)] text-[1.694rem] leading-tight text-ink">
                 {boss.name}
               </h1>
-              <p className="mt-1.5 line-clamp-2 text-[15.4px] text-ink-muted italic">
+              <p className="mt-1.5 line-clamp-2 text-[16.94px] text-ink-muted italic">
                 “{boss.introLine}”
               </p>
             </div>
-            <span className="shrink-0 rounded-sm border border-brass/40 px-2.5 py-1 text-[14.3px] text-brass">
+            <span className="shrink-0 rounded-sm border border-brass/40 px-2.5 py-1 text-[15.73px] text-brass">
               {boss.gimmickBadge}
             </span>
           </div>
 
-          <div className="mt-2.5 flex items-center justify-between text-[14.3px]">
+          <div className="mt-2.5 flex items-center justify-between text-[15.73px]">
             <span className="text-ink-muted">봉인</span>
             <span className="brass-text tabular-nums">
               {bossHp} / {boss.maxHp}
@@ -88,7 +88,7 @@ export function GameHud({
             />
           </div>
 
-          <div className="mt-2.5 flex flex-wrap items-center justify-center gap-3.5 text-[15.4px]">
+          <div className="mt-2.5 flex flex-wrap items-center justify-center gap-3.5 text-[16.94px]">
             <span className="inline-flex items-center gap-1.5">
               <Eye className="h-[1.125rem] w-[1.125rem] text-brass" aria-hidden />
               <span className="brass-text tabular-nums">{remaining.truth}</span>
@@ -129,15 +129,15 @@ export function GameHud({
         >
           {tip ? (
             <>
-              <p className="font-[family-name:var(--font-display)] text-[1.155rem] text-[#e8c878]">
+              <p className="font-[family-name:var(--font-display)] text-[1.2705rem] text-[#e8c878]">
                 {tip.name}
               </p>
-              <p className="mt-1 text-[14.3px] leading-relaxed text-[#c4b496]">
+              <p className="mt-1 text-[15.73px] leading-relaxed text-[#c4b496]">
                 {tip.description}
               </p>
             </>
           ) : (
-            <p className="text-[13.2px] text-[#9a8b72]/70">
+            <p className="text-[14.52px] text-[#9a8b72]/70">
               의식·유물 아이콘에 올리면 설명이 표시됩니다
             </p>
           )}
@@ -155,12 +155,12 @@ export function GameHud({
         >
           <div className="flex items-end justify-between gap-3 rounded-sm border border-brass/35 bg-[#2a2218]/90 px-4 py-2.5">
             <div>
-              <p className="text-[14.3px] tracking-widest text-[#cbb896]">
+              <p className="text-[15.73px] tracking-widest text-[#cbb896]">
                 예상 데미지
               </p>
-              <p className="font-[family-name:var(--font-display)] text-[2.75rem] leading-none brass-text tabular-nums">
+              <p className="font-[family-name:var(--font-display)] text-[3.025rem] leading-none brass-text tabular-nums">
                 {expectedDamage}
-                <span className="ml-2 text-[1.43rem] text-[#d4c4a0]">
+                <span className="ml-2 text-[1.573rem] text-[#d4c4a0]">
                   ×{multiplier.toFixed(1)}
                 </span>
               </p>
@@ -169,7 +169,7 @@ export function GameHud({
               type="button"
               disabled={!canCashOut || inputLocked}
               onClick={onCashOut}
-              className="pointer-events-auto rounded-sm border border-brass bg-gradient-to-b from-[#4a3a22] to-[#2a2014] px-5 py-3 text-[1.155rem] font-medium text-[#f0d9a0] disabled:border-brass/20 disabled:text-[#9a8b72]/50"
+              className="pointer-events-auto rounded-sm border border-brass bg-gradient-to-b from-[#4a3a22] to-[#2a2014] px-5 py-3 text-[1.2705rem] font-medium text-[#f0d9a0] disabled:border-brass/20 disabled:text-[#9a8b72]/50"
             >
               멈추고 정산
             </button>

@@ -1,18 +1,15 @@
 import type { DamageBreakdown, DamageInput } from '../types/game'
+import { COMBO_MULTIPLIERS, TRUTH_BASE_SCORE } from './constants'
 
 /** 연속 성공 n장째(1-indexed)의 기본 점수 */
-export const CARD_BASE_SCORES = [10, 15, 20, 30] as const
-
-/** 연속 성공 n장일 때의 기본 콤보 배수 */
-export const COMBO_MULTIPLIERS = [1.0, 1.5, 2.5, 4.0] as const
+export { COMBO_MULTIPLIERS } from './constants'
 
 /**
  * n장째(1-indexed) 진실 카드의 기본 점수를 반환한다.
  */
 export function getCardBaseScore(index1Based: number): number {
   if (index1Based < 1) return 0
-  const idx = Math.min(index1Based, CARD_BASE_SCORES.length) - 1
-  return CARD_BASE_SCORES[idx]!
+  return TRUTH_BASE_SCORE
 }
 
 /**

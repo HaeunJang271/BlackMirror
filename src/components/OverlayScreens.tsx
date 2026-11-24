@@ -34,7 +34,7 @@ export function OverlayScreens({
       >
         {phase === 'TITLE' && (
           <>
-            <p className="text-[11px] tracking-[0.35em] text-ink-muted">0시의 소환실</p>
+            <p className="text-[12.1px] tracking-[0.35em] text-ink-muted">0시의 소환실</p>
             <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl brass-text">
               검은 저울
             </h1>
@@ -55,7 +55,7 @@ export function OverlayScreens({
 
         {phase === 'STAGE_INTRO' && (
           <>
-            <p className="text-[11px] tracking-[0.25em] text-ink-muted">계약자 등장</p>
+            <p className="text-[12.1px] tracking-[0.25em] text-ink-muted">계약자 등장</p>
             <h2 className="mt-2 font-[family-name:var(--font-display)] text-2xl text-ink">
               {boss.name}
             </h2>

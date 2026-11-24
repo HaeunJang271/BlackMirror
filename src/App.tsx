@@ -6,6 +6,8 @@ import { ResolveOverlay } from './components/ResolveOverlay'
 import { RewardModal } from './components/RewardModal'
 import { TableScene } from './components/TableScene'
 import { getBoss } from './data/bosses'
+import { MAX_HAND } from './engine/constants'
+import { Volume2, VolumeX } from 'lucide-react'
 import { calculateDamage, canCashOut } from './engine/calculator'
 import {
   createInitialState,
@@ -19,10 +21,13 @@ import { log } from './utils/logger'
 import {
   playCandleBlowOut,
   playCardFlip,
+  playBossDefeat,
   playCashOut,
   playCurseHit,
-  playTick,
-  playTruthChime,
+  playTimerTick,
+  playTruthReveal,
+  isMuted,
+  toggleMute,
   unlockAudio,
 } from './utils/sound'
 
@@ -45,6 +50,7 @@ export default function App() {
   const [ritualCue, setRitualCue] = useState<RitualFxCue | null>(null)
   const [bloodPulse, setBloodPulse] = useState(0)
   const [timerSec, setTimerSec] = useState<number | null>(null)
+  const [muted, setMuted] = useState(isMuted)
 
   const boss = getBoss(Math.min(state.stageIndex, 2))
   const breakdown = calculateDamage(toDamageInput(state))
@@ -68,9 +74,9 @@ export default function App() {
         limit - Math.floor((Date.now() - startedAt) / 1000),
       )
       setTimerSec(left)
-      if (left <= 3 && left > 0 && lastTickSec.current !== left) {
+      if (left <= 4 && left > 0 && lastTickSec.current !== left) {
         lastTickSec.current = left
-        void playTick()
+        void playTimerTick()
       }
       if (left <= 0) {
         window.clearInterval(tick)
@@ -93,6 +99,7 @@ export default function App() {
     if (state.phase === 'RESOLVING' && prevPhase.current !== 'RESOLVING') {
       if (state.resolve?.kind === 'cash_out') {
         void playCashOut()
+        if (state.resolve.next === 'reward') void playBossDefeat()
         setHitFx(true)
         window.setTimeout(() => setHitFx(false), 100)
         if (state.resolve.saltBreak) {
@@ -116,7 +123,7 @@ export default function App() {
       state.turn.consecutiveTruths > prevTruths.current &&
       state.turn.consecutiveTruths > 0
     ) {
-      void playTruthChime(state.turn.consecutiveTruths)
+      void playTruthReveal(state.turn.consecutiveTruths)
     }
     prevTruths.current = state.turn.consecutiveTruths
   }, [playing, state.turn.consecutiveTruths])
@@ -183,6 +190,12 @@ export default function App() {
 
       <FilmGrain />
 
+      <button type="button" aria-label={muted ? '소리 켜기' : '음소거'} aria-pressed={muted}
+        onClick={() => { setMuted(toggleMute()); void unlockAudio() }}
+        className="absolute left-4 top-4 z-50 rounded-sm border border-brass/40 bg-black/60 p-2 text-brass">
+        {muted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+      </button>
+
       {/* 피의 서약 화면 테두리 맥동 */}
       {bloodPulse > 0.05 && (
         <div
@@ -216,12 +229,10 @@ export default function App() {
             const needsTarget = ritualId === 'clairvoyant_coin'
             const target = state.board.find((c) => !c.revealed && !c.removed)
             const targetCardId = needsTarget ? target?.id : undefined
+            const action = { type: 'USE_RITUAL' as const, ritualId, targetCardId }
+            if (gameReducer(state, action) === state) return
             fireRitual(ritualId, targetCardId)
-            dispatch({
-              type: 'USE_RITUAL',
-              ritualId,
-              targetCardId,
-            })
+            dispatch(action)
           }}
         />
       )}
@@ -251,8 +262,10 @@ export default function App() {
       {state.phase === 'REWARD' && state.reward && (
         <RewardModal
           offer={state.reward}
-          onConfirm={(relicId, ritualId) =>
-            dispatch({ type: 'SELECT_REWARD', relicId, ritualId })
+          refillCount={Math.min(2, MAX_HAND - state.hand.length, state.spentRituals.filter((id) => !state.hand.includes(id) && !(id === 'ash_breath' && state.ashBreathUsedThisRun)).length)}
+          canRelight={state.candles < MAX_CANDLES}
+          onConfirm={(relicId, choice) =>
+            dispatch({ type: 'SELECT_REWARD', relicId, choice })
           }
         />
       )}

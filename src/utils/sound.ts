@@ -2,6 +2,24 @@ import { log } from './logger'
 
 let ctx: AudioContext | null = null
 let muted = false
+let master: GainNode | null = null
+
+function startDrone(audio: AudioContext): void {
+  const filter = audio.createBiquadFilter()
+  filter.type = 'lowpass'
+  filter.frequency.value = 180
+  const gain = audio.createGain()
+  gain.gain.value = 0.035
+  filter.connect(gain)
+  gain.connect(master!)
+  for (const frequency of [55, 82]) {
+    const osc = audio.createOscillator()
+    osc.type = 'sine'
+    osc.frequency.value = frequency
+    osc.connect(filter)
+    osc.start()
+  }
+}
 
 /**
  * AudioContext를 지연 생성하고, 브라우저 정책에 맞게 resume한다.
@@ -15,6 +33,10 @@ async function ensureCtx(): Promise<AudioContext | null> {
         (window as unknown as { webkitAudioContext: typeof AudioContext })
           .webkitAudioContext
       ctx = new Ctx()
+      master = ctx.createGain()
+      master.gain.value = muted ? 0 : 1
+      master.connect(ctx.destination)
+      startDrone(ctx)
     }
     if (ctx.state === 'suspended') {
       await ctx.resume()
@@ -45,9 +67,8 @@ function envGain(
  */
 export function toggleMute(): boolean {
   muted = !muted
-  if (muted && ctx) {
-    void ctx.suspend().catch((err) => log('warn', 'suspend failed', err))
-  }
+  if (master) master.gain.value = muted ? 0 : 1
+  if (!muted && ctx?.state === 'suspended') void ctx.resume().catch((err) => log('warn', 'resume failed', err))
   return muted
 }
 
@@ -91,9 +112,9 @@ export async function playCardFlip(): Promise<void> {
   const og = envGain(audio, t, 0.04, 0.004, 0.04)
   noise.connect(filter)
   filter.connect(g)
-  g.connect(audio.destination)
+  g.connect(master!)
   osc.connect(og)
-  og.connect(audio.destination)
+  og.connect(master!)
   noise.start(t)
   noise.stop(t + 0.045)
   osc.start(t)
@@ -103,7 +124,7 @@ export async function playCardFlip(): Promise<void> {
 /**
  * 진실 적중 황동 차임. 콤보가 오를수록 음이 높아진다.
  */
-export async function playTruthChime(comboCount: number): Promise<void> {
+export async function playTruthReveal(comboCount: number): Promise<void> {
   const audio = await ensureCtx()
   if (!audio) return
   const t = audio.currentTime
@@ -118,8 +139,8 @@ export async function playTruthChime(comboCount: number): Promise<void> {
   const pg = envGain(audio, t, 0.05, 0.01, 0.2)
   osc.connect(g)
   partial.connect(pg)
-  g.connect(audio.destination)
-  pg.connect(audio.destination)
+  g.connect(master!)
+  pg.connect(master!)
   osc.start(t)
   partial.start(t)
   osc.stop(t + 0.35)
@@ -144,12 +165,21 @@ export async function playCashOut(): Promise<void> {
   const cg = envGain(audio, t, 0.08, 0.002, 0.04)
   osc.connect(g)
   click.connect(cg)
-  g.connect(audio.destination)
-  cg.connect(audio.destination)
+  g.connect(master!)
+  cg.connect(master!)
   osc.start(t)
   click.start(t)
   osc.stop(t + 0.4)
   click.stop(t + 0.05)
+  const impact = audio.createOscillator()
+  impact.type = 'triangle'
+  impact.frequency.setValueAtTime(160, t + 0.07)
+  impact.frequency.exponentialRampToValueAtTime(65, t + 0.3)
+  const impactGain = envGain(audio, t + 0.07, 0.16, 0.005, 0.3)
+  impact.connect(impactGain)
+  impactGain.connect(master!)
+  impact.start(t + 0.07)
+  impact.stop(t + 0.4)
 }
 
 /**
@@ -169,26 +199,44 @@ export async function playCurseHit(): Promise<void> {
   const g = envGain(audio, t, 0.22, 0.02, 0.45)
   osc.connect(filter)
   filter.connect(g)
-  g.connect(audio.destination)
+  g.connect(master!)
   osc.start(t)
   osc.stop(t + 0.5)
 }
 
 /**
- * 타이머 3초 이하 째깍.
+ * 타이머 마지막 4초: 낮은 심장 박동과 시계 소리.
  */
-export async function playTick(): Promise<void> {
+export async function playTimerTick(): Promise<void> {
   const audio = await ensureCtx()
   if (!audio) return
   const t = audio.currentTime
   const osc = audio.createOscillator()
-  osc.type = 'square'
-  osc.frequency.value = 880
-  const g = envGain(audio, t, 0.06, 0.001, 0.03)
+  osc.type = 'sine'
+  osc.frequency.setValueAtTime(130, t)
+  osc.frequency.exponentialRampToValueAtTime(55, t + 0.12)
+  const g = envGain(audio, t, 0.16, 0.002, 0.14)
   osc.connect(g)
-  g.connect(audio.destination)
+  g.connect(master!)
   osc.start(t)
-  osc.stop(t + 0.04)
+  osc.stop(t + 0.16)
+}
+
+/** 보스 처치 시 울리는 낮고 긴 종소리. */
+export async function playBossDefeat(): Promise<void> {
+  const audio = await ensureCtx()
+  if (!audio) return
+  const t = audio.currentTime
+  for (const [frequency, volume] of [[82, 0.2], [164.8, 0.07], [247, 0.035]]) {
+    const osc = audio.createOscillator()
+    osc.type = 'sine'
+    osc.frequency.value = frequency!
+    const gain = envGain(audio, t, volume!, 0.01, 1.8)
+    osc.connect(gain)
+    gain.connect(master!)
+    osc.start(t)
+    osc.stop(t + 1.9)
+  }
 }
 
 /**
@@ -219,7 +267,7 @@ export async function playCandleBlowOut(): Promise<void> {
   const blowGain = envGain(audio, t, 0.16, 0.02, 0.28)
   blow.connect(blowFilter)
   blowFilter.connect(blowGain)
-  blowGain.connect(audio.destination)
+  blowGain.connect(master!)
   blow.start(t)
   blow.stop(t + 0.35)
 
@@ -243,7 +291,7 @@ export async function playCandleBlowOut(): Promise<void> {
   const hissGain = envGain(audio, t + 0.04, 0.1, 0.005, 0.14)
   hiss.connect(hissFilter)
   hissFilter.connect(hissGain)
-  hissGain.connect(audio.destination)
+  hissGain.connect(master!)
   hiss.start(t + 0.04)
   hiss.stop(t + 0.22)
 

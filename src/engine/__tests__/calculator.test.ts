@@ -31,47 +31,45 @@ function baseInput(partial: Partial<DamageInput> = {}): DamageInput {
 describe('기본 콤보 배수', () => {
   it('1~4장 연속 성공 점수와 배수가 PRD 표를 따른다', () => {
     expect(getCardBaseScore(1)).toBe(10)
-    expect(getCardBaseScore(2)).toBe(15)
-    expect(getCardBaseScore(3)).toBe(20)
-    expect(getCardBaseScore(4)).toBe(30)
+    expect(getCardBaseScore(2)).toBe(10)
+    expect(getCardBaseScore(3)).toBe(10)
+    expect(getCardBaseScore(4)).toBe(10)
 
     expect(getComboMultiplier(0)).toBe(1.0)
     expect(getComboMultiplier(1)).toBe(1.0)
     expect(getComboMultiplier(2)).toBe(1.5)
-    expect(getComboMultiplier(3)).toBe(2.5)
-    expect(getComboMultiplier(4)).toBe(4.0)
+    expect(getComboMultiplier(3)).toBe(2.2)
+    expect(getComboMultiplier(4)).toBe(3.5)
   })
 
   it('누적 기본 점수 × 콤보로 최종 데미지를 계산한다', () => {
     const two = calculateDamage(
       baseInput({
         consecutiveTruths: 2,
-        openedTruthBaseScores: [10, 15],
+        openedTruthBaseScores: [10, 10],
       }),
     )
-    // (10+15) × 1.5 = 37.5 → 38
-    expect(two.finalDamage).toBe(38)
+    expect(two.finalDamage).toBe(30)
 
     const three = calculateDamage(
       baseInput({
         consecutiveTruths: 3,
-        openedTruthBaseScores: [10, 15, 20],
+        openedTruthBaseScores: [10, 10, 10],
       }),
     )
-    // 45 × 2.5 = 112.5 → 113
-    expect(three.finalDamage).toBe(113)
+    expect(three.finalDamage).toBe(66)
   })
 
   it('시계공 3장째 보너스 +0.5를 콤보에 가산한다', () => {
     const result = calculateDamage(
       baseInput({
         consecutiveTruths: 3,
-        openedTruthBaseScores: [10, 15, 20],
+        openedTruthBaseScores: [10, 10, 10],
         bossThirdSuccessBonus: 0.5,
       }),
     )
-    expect(result.comboMultiplier).toBe(3.0)
-    expect(result.finalDamage).toBe(135)
+    expect(result.comboMultiplier).toBe(2.7)
+    expect(result.finalDamage).toBe(81)
   })
 })
 

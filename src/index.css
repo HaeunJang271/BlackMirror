@@ -13,12 +13,12 @@
   --color-ink-muted: #9a8b72;
   --font-display: 'Cormorant Garamond', 'Times New Roman', serif;
   --font-body: 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif;
-  --text-xs: 0.825rem;
-  --text-sm: 0.9625rem;
-  --text-xl: 1.375rem;
-  --text-2xl: 1.65rem;
-  --text-3xl: 2.0625rem;
-  --text-5xl: 3.3rem;
+  --text-xs: 0.9075rem;
+  --text-sm: 1.05875rem;
+  --text-xl: 1.5125rem;
+  --text-2xl: 1.815rem;
+  --text-3xl: 2.26875rem;
+  --text-5xl: 3.63rem;
 }
 
 @layer base {

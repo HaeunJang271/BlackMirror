@@ -13,11 +13,10 @@ import { log } from '../utils/logger'
 import { createRng, pickN } from '../utils/rng'
 import { buildBoard, removeOneUnopenedCurse } from './board'
 import { calculateDamage, canCashOut } from './calculator'
+import { MAX_CANDLES, MAX_HAND, MAX_RELICS } from './constants'
 import { applyTruthFlip, createEmptyTurn, markRitualUsed } from './turn'
 
-const MAX_HAND = 4
-const MAX_RELICS = 4
-export const MAX_CANDLES = 3
+export { MAX_CANDLES } from './constants'
 const CASH_RESOLVE_MS = 650
 const FAIL_RESOLVE_MS = 850
 
@@ -32,6 +31,7 @@ export function createInitialState(seed = Date.now()): GameState {
     candles: MAX_CANDLES,
     board: [],
     hand: [],
+    spentRituals: [],
     relics: [],
     turn: createEmptyTurn(),
     cursesHitThisRun: 0,
@@ -67,18 +67,6 @@ export function toDamageInput(state: GameState): DamageInput {
   }
 }
 
-function drawRitual(hand: RitualId[], seed: number, salt: number): RitualId[] {
-  if (hand.length >= MAX_HAND) return hand
-  const pool = ALL_RITUAL_IDS.filter((id) => !hand.includes(id))
-  if (pool.length === 0) return hand
-  const pick = pickN(pool, 1, createRng(seed + salt))[0]
-  return pick ? [...hand, pick] : hand
-}
-
-function stageSalt(state: GameState): number {
-  return state.stageIndex * 97 + state.relics.length * 13
-}
-
 function startStage(state: GameState, stageIndex: number): GameState {
   const boss = getBoss(stageIndex)
   return {
@@ -105,18 +93,19 @@ function beginPlayerTurn(state: GameState): GameState {
     state.rngSeed,
     round,
   )
-  const hand = drawRitual(
-    state.hand,
-    state.rngSeed,
-    round * 31 + stageSalt(state),
+  const pool = ALL_RITUAL_IDS.filter(
+    (id) => !state.hand.includes(id) && !(id === 'ash_breath' && state.ashBreathUsedThisRun),
   )
+  const seed = state.rngSeed + round * 31 + state.stageIndex * 97 + state.relics.length * 13
+  const drawn = state.hand.length < MAX_HAND ? pickN(pool, 1, createRng(seed)) : []
   return {
     ...state,
     phase: 'PLAYER_TURN',
     round,
     board,
-    hand,
-    turn: { ...createEmptyTurn(), timerStarted: true },
+    hand: [...state.hand, ...drawn],
+    spentRituals: state.spentRituals.filter((id) => !drawn.includes(id)),
+    turn: createEmptyTurn(),
     lastPeekCardId: null,
     curseFlash: false,
     resolve: null,
@@ -126,14 +115,12 @@ function beginPlayerTurn(state: GameState): GameState {
 function offerReward(state: GameState): GameState {
   const rand = createRng(state.rngSeed + state.stageIndex * 777)
   const relicPool = ALL_RELIC_IDS.filter((id) => !state.relics.includes(id))
-  const ritualPool = ALL_RITUAL_IDS.filter((id) => !state.hand.includes(id))
   return {
     ...state,
     phase: 'REWARD',
     resolve: null,
     reward: {
-      relicOptions: pickN(relicPool, Math.min(1, relicPool.length), rand),
-      ritualOptions: pickN(ritualPool, Math.min(2, ritualPool.length), rand),
+      relicOptions: pickN(relicPool, 3, rand),
     },
   }
 }
@@ -278,7 +265,7 @@ function finishResolve(state: GameState): GameState {
   return beginPlayerTurn({ ...state, curseFlash: false })
 }
 
-function useRitual(
+function applyRitual(
   state: GameState,
   ritualId: RitualId,
   targetCardId?: string,
@@ -290,7 +277,8 @@ function useRitual(
   const next: GameState = {
     ...state,
     hand,
-    turn: markRitualUsed(state.turn, ritualId),
+    spentRituals: [...state.spentRituals, ritualId],
+    turn: { ...markRitualUsed(state.turn, ritualId), timerStarted: true },
   }
 
   switch (ritualId) {
@@ -385,22 +373,23 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       if (state.phase !== 'PLAYER_TURN') return state
       return applyCashOut(state)
     case 'USE_RITUAL':
-      return useRitual(state, action.ritualId, action.targetCardId)
+      return applyRitual(state, action.ritualId, action.targetCardId)
     case 'SELECT_REWARD': {
-      if (state.phase !== 'REWARD' || !state.reward) return state
+      if (state.phase !== 'REWARD' || !state.reward || !state.reward.relicOptions.includes(action.relicId) || !['rituals', 'candle'].includes(action.choice)) return state
       const relics = [...state.relics]
       if (relics.length < MAX_RELICS && !relics.includes(action.relicId)) {
         relics.push(action.relicId)
       }
-      const hand = [...state.hand]
-      if (hand.length < MAX_HAND && !hand.includes(action.ritualId)) {
-        hand.push(action.ritualId)
-      }
+      const pool = state.spentRituals.filter((id) => !state.hand.includes(id) && !(id === 'ash_breath' && state.ashBreathUsedThisRun))
+      const refill = action.choice === 'rituals' ? pickN(pool, Math.min(2, MAX_HAND - state.hand.length), createRng(state.rngSeed + state.stageIndex * 777 + 1)) : []
+      const hand = [...state.hand, ...refill]
+      const spentRituals = state.spentRituals.filter((id) => !refill.includes(id))
+      const candles = action.choice === 'candle' ? Math.min(MAX_CANDLES, state.candles + 1) : state.candles
       const nextStage = state.stageIndex + 1
       if (nextStage >= 3) {
-        return { ...state, relics, hand, phase: 'VICTORY', reward: null }
+        return { ...state, relics, hand, spentRituals, candles, phase: 'VICTORY', reward: null }
       }
-      return startStage({ ...state, relics, hand, reward: null }, nextStage)
+      return startStage({ ...state, relics, hand, spentRituals, candles, reward: null }, nextStage)
     }
     case 'CLEAR_CURSE_FLASH':
       return { ...state, curseFlash: false }
