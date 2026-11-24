@@ -8,6 +8,7 @@ import { RELIC_ICONS, RITUAL_ICONS } from './HudIcons'
 
 interface GameHudProps {
   boss: BossDef
+  bossLine: string
   bossHp: number
   stageIndex: number
   board: BoardCard[]
@@ -33,6 +34,7 @@ interface SkillTip {
  */
 export function GameHud({
   boss,
+  bossLine,
   bossHp,
   stageIndex,
   board,
@@ -66,8 +68,8 @@ export function GameHud({
               <h1 className="truncate font-[family-name:var(--font-display)] text-[1.694rem] leading-tight text-ink">
                 {boss.name}
               </h1>
-              <p className="mt-1.5 line-clamp-2 text-[16.94px] text-ink-muted italic">
-                “{boss.introLine}”
+              <p aria-live="polite" className="mt-1.5 text-[16.94px] text-ink-muted italic">
+                “{bossLine}”
               </p>
             </div>
             <span className="shrink-0 rounded-sm border border-brass/40 px-2.5 py-1 text-[15.73px] text-brass">

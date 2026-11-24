@@ -1,4 +1,4 @@
-# PRD: 《검은 저울: 0시의 소환실》 (가제: BLACK SCALE)
+# PRD: 《검은 저울: 자정의 소환실》 (가제: BLACK SCALE)
 
 Phase 1 기준 요약본. 원본 스펙은 대화에 첨부된 PRD를 따른다.
 

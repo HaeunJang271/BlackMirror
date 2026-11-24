@@ -5,6 +5,8 @@ interface OverlayScreensProps {
   phase: GamePhase
   boss: BossDef
   onStart: () => void
+  onEnableAudio: () => void
+  onPlayMusic: () => void
   onConfirmIntro: () => void
   onRetry: () => void
   onRevive: () => void
@@ -17,6 +19,7 @@ export function OverlayScreens({
   phase,
   boss,
   onStart,
+  onEnableAudio,
   onConfirmIntro,
   onRetry,
   onRevive,
@@ -26,7 +29,10 @@ export function OverlayScreens({
   }
 
   return (
-    <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/80 px-6">
+    <div
+      className="absolute inset-0 z-30 flex items-center justify-center bg-black/80 px-6"
+      onPointerDown={phase === 'TITLE' ? onEnableAudio : undefined}
+    >
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -34,14 +40,14 @@ export function OverlayScreens({
       >
         {phase === 'TITLE' && (
           <>
-            <p className="text-[12.1px] tracking-[0.35em] text-ink-muted">0시의 소환실</p>
+            <p className="text-[12.1px] tracking-[0.35em] text-ink-muted">자정의 소환실</p>
             <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl brass-text">
               검은 저울
             </h1>
             <p className="mt-3 text-xs leading-relaxed text-ink-muted">
-              세 자루의 촛불. 황동 저울. 이름을 잃은 망자들.
+              자정이 울리면 책상 위 촛불 세 자루에 네 영혼이 묶인다.
               <br />
-              확률을 비틀고, 배수를 터뜨려라.
+              거짓을 피해 진실의 무게로, 이름 잃은 세 망자의 봉인을 부숴라.
             </p>
             <button
               type="button"
@@ -76,9 +82,9 @@ export function OverlayScreens({
         {phase === 'VICTORY' && (
           <>
             <h2 className="font-[family-name:var(--font-display)] text-2xl brass-text">
-              자정이 끝났다
+              새벽 0시 01분, 봉인이 깨졌다
             </h2>
-            <p className="mt-2 text-xs text-ink-muted">세 계약자의 봉인이 모두 풀렸다.</p>
+            <p className="mt-2 text-xs text-ink-muted">세 명의 망자가 물러가고 황동 저울이 멈췄다. 세 자루의 촛불을 지켜 낸 채, 당신은 문을 열고 걸어 나온다.</p>
             <button
               type="button"
               onClick={onRetry}
@@ -92,9 +98,9 @@ export function OverlayScreens({
         {phase === 'GAME_OVER' && (
           <>
             <h2 className="font-[family-name:var(--font-display)] text-2xl text-curse-glow">
-              촛불이 꺼졌다
+              마지막 불씨가 꺼졌다
             </h2>
-            <p className="mt-2 text-xs text-ink-muted">어둠이 책상을 삼킨다.</p>
+            <p className="mt-2 text-xs text-ink-muted">자정의 소환실에 네 이름이 하나 더 새겨졌다. 저울은 다음 자정을 기다린다.</p>
             <button
               type="button"
               onClick={onRevive}

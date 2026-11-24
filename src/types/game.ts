@@ -86,6 +86,10 @@ export interface BossDef {
   truthCount: number
   curseCount: number
   introLine: string
+  hitLine: string
+  curseLine: string
+  defeatLine: string
+  lastCandleLine?: string
   gimmickBadge: string
   gimmickDescription: string
   /** 턴 제한(초). 없으면 무제한 */

@@ -18,12 +18,14 @@ import {
 import type { RitualFxCue } from './scene/ritualFx'
 import type { RitualId } from './types/game'
 import { log } from './utils/logger'
+import { getBossLine, getBossReaction } from './utils/bossDialogue'
 import {
   playCandleBlowOut,
   playCardFlip,
   playBossDefeat,
   playCashOut,
   playCurseHit,
+  playCurseShatter,
   playTimerTick,
   playTruthReveal,
   isMuted,
@@ -43,6 +45,7 @@ export default function App() {
   const prevTruths = useRef(0)
   const lastTickSec = useRef<number | null>(null)
   const ritualKey = useRef(0)
+  const dialogueTimer = useRef<number | null>(null)
 
   const [hitFx, setHitFx] = useState(false)
   const [nodFx, setNodFx] = useState(false)
@@ -51,11 +54,31 @@ export default function App() {
   const [bloodPulse, setBloodPulse] = useState(0)
   const [timerSec, setTimerSec] = useState<number | null>(null)
   const [muted, setMuted] = useState(isMuted)
+  const [reaction, setReaction] = useState<{ bossId: string; line: string } | null>(null)
 
   const boss = getBoss(Math.min(state.stageIndex, 2))
   const breakdown = calculateDamage(toDamageInput(state))
   const playing = state.phase === 'PLAYER_TURN'
   const resolving = state.phase === 'RESOLVING'
+
+  useEffect(() => {
+    void unlockAudio()
+  }, [])
+
+  useEffect(() => {
+    if (!state.resolve) return
+    const line = getBossReaction(boss, state.resolve)
+    if (!line) return
+    if (dialogueTimer.current !== null) window.clearTimeout(dialogueTimer.current)
+    setReaction({ bossId: boss.id, line })
+    dialogueTimer.current = window.setTimeout(() => setReaction(null), 3500)
+  }, [state.resolve, boss])
+
+  useEffect(() => () => {
+    if (dialogueTimer.current !== null) window.clearTimeout(dialogueTimer.current)
+  }, [])
+
+  const bossLine = getBossLine(boss, state.bossHp, state.candles, reaction?.bossId === boss.id ? reaction.line : null)
 
   useEffect(() => {
     const shouldRun =
@@ -97,6 +120,7 @@ export default function App() {
 
   useEffect(() => {
     if (state.phase === 'RESOLVING' && prevPhase.current !== 'RESOLVING') {
+      if (state.resolve?.kind === 'curse' || state.resolve?.saltBreak) void playCurseShatter()
       if (state.resolve?.kind === 'cash_out') {
         void playCashOut()
         if (state.resolve.next === 'reward') void playBossDefeat()
@@ -107,9 +131,12 @@ export default function App() {
           window.setTimeout(() => setSaltBreak(false), 120)
         }
       } else {
-        void playCurseHit().then(() => {
+        if (state.resolve?.kind === 'curse') {
+          void playCandleBlowOut(0.25)
+        } else {
+          void playCurseHit()
           void playCandleBlowOut()
-        })
+        }
         setNodFx(true)
         window.setTimeout(() => setNodFx(false), 100)
       }
@@ -192,7 +219,7 @@ export default function App() {
 
       <button type="button" aria-label={muted ? '소리 켜기' : '음소거'} aria-pressed={muted}
         onClick={() => { setMuted(toggleMute()); void unlockAudio() }}
-        className="absolute left-4 top-4 z-50 rounded-sm border border-brass/40 bg-black/60 p-2 text-brass">
+        className="absolute right-4 top-1 z-50 rounded-sm bg-black/60 p-2 text-brass">
         {muted ? <VolumeX size={20} /> : <Volume2 size={20} />}
       </button>
 
@@ -209,6 +236,7 @@ export default function App() {
       {showHud && (
         <GameHud
           boss={boss}
+          bossLine={bossLine}
           bossHp={state.bossHp}
           stageIndex={state.stageIndex}
           board={state.board}
@@ -242,6 +270,11 @@ export default function App() {
       <OverlayScreens
         phase={state.phase}
         boss={boss}
+        onEnableAudio={() => { void unlockAudio() }}
+        onPlayMusic={() => {
+          if (muted) setMuted(toggleMute())
+          void unlockAudio()
+        }}
         onStart={() => {
           void unlockAudio()
           revivedRef.current = false
@@ -262,6 +295,7 @@ export default function App() {
       {state.phase === 'REWARD' && state.reward && (
         <RewardModal
           offer={state.reward}
+          defeatLine={boss.defeatLine}
           refillCount={Math.min(2, MAX_HAND - state.hand.length, state.spentRituals.filter((id) => !state.hand.includes(id) && !(id === 'ash_breath' && state.ashBreathUsedThisRun)).length)}
           canRelight={state.candles < MAX_CANDLES}
           onConfirm={(relicId, choice) =>
