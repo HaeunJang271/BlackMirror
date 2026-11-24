@@ -1,4 +1,4 @@
-import { getBoss } from '../data/bosses'
+import { BOSSES, getBoss } from '../data/bosses'
 import { ALL_RELIC_IDS } from '../data/relics'
 import { ALL_RITUAL_IDS } from '../data/rituals'
 import type {
@@ -251,6 +251,9 @@ function finishResolve(state: GameState): GameState {
   if (state.phase !== 'RESOLVING' || !state.resolve) return state
   const { next } = state.resolve
   if (next === 'reward') {
+    if (state.stageIndex === BOSSES.length - 1) {
+      return { ...state, phase: 'VICTORY', resolve: null, reward: null, curseFlash: false }
+    }
     return offerReward({ ...state, resolve: null, curseFlash: false })
   }
   if (next === 'game_over') {

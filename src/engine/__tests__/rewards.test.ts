@@ -31,12 +31,25 @@ describe('스테이지 보상', () => {
     expect(next.candles).toBe(2)
   })
 
-  it('촛불 선택은 손패 대신 촛불을 되살리며 마지막 보스 후에는 승리한다', () => {
-    const state = defeated(2)
+  it('촛불 보상은 손패 대신 촛불을 되살린다', () => {
+    const state = defeated()
     const next = gameReducer(state, { type: 'SELECT_REWARD', relicId: state.reward!.relicOptions[0]!, choice: 'candle' })
-    expect(next.phase).toBe('VICTORY')
+    expect(next.phase).toBe('STAGE_INTRO')
     expect(next.candles).toBe(3)
     expect(next.hand).toEqual(state.hand)
+  })
+
+  it('마지막 보스를 처치하면 보상 선택 없이 승리한다', () => {
+    const initial = createInitialState(123)
+    const state = gameReducer({ ...initial, phase: 'PLAYER_TURN', stageIndex: 2, bossHp: 1, candles: 2,
+      turn: { ...initial.turn, consecutiveTruths: 1, openedTruthBaseScores: [10] },
+    }, { type: 'CASH_OUT' })
+    expect(state.phase).toBe('RESOLVING')
+    expect(state.resolve?.next).toBe('reward')
+    const next = gameReducer(state, { type: 'FINISH_RESOLVE' })
+    expect(next.phase).toBe('VICTORY')
+    expect(next.reward).toBeNull()
+    expect(next.candles).toBe(2)
   })
 
   it('제시되지 않은 유물은 선택할 수 없다', () => {
