@@ -16,15 +16,15 @@ const TABLE_TOP_Y = 0.06
 const PORTRAIT_W = 1.48
 const PORTRAIT_H = 1.86
 const BASE_Z = TABLE_FAR_Z + 0.01
+const BASE_Y = TABLE_TOP_Y + PORTRAIT_H / 2 + 0.15
 
 /**
- * 보스 JPG를 탁자 먼쪽 가장자리에 하단이 맞닿게 배치한다.
+ * 보스 초상화를 탁자 먼쪽에 배치한다.
  */
 export function createBoss(): BossRig {
   const group = new THREE.Group()
   const upper = new THREE.Group()
-  // 플레인 하단 = 탁자 상판에 딱 붙임
-  upper.position.set(0, TABLE_TOP_Y + PORTRAIT_H / 2, BASE_Z)
+  upper.position.set(0, BASE_Y, BASE_Z)
   group.add(upper)
 
   const portraits = preloadBossPortraits()
@@ -32,6 +32,7 @@ export function createBoss(): BossRig {
   const mat = new THREE.MeshBasicMaterial({
     map: portraits.blind_clockmaker,
     transparent: true,
+    depthWrite: false,
     toneMapped: false,
   })
 
@@ -50,7 +51,6 @@ export function createBoss(): BossRig {
   let currentId: BossId = 'blind_clockmaker'
   let hitUntil = 0
   let nodUntil = 0
-  const baseY = TABLE_TOP_Y + PORTRAIT_H / 2
 
   function applyPortrait(id: BossId) {
     currentId = id
@@ -70,8 +70,8 @@ export function createBoss(): BossRig {
       if (opts.hit) hitUntil = t + 0.55
       if (opts.nod) nodUntil = t + 0.7
 
-      // 하단은 탁자에 고정, 숨결은 아주 약하게만
-      upper.position.y = baseY + Math.sin(t * 1.2) * 0.01
+      // 숨결은 아주 약하게만
+      upper.position.y = BASE_Y + Math.sin(t * 1.2) * 0.01
       faceLight.intensity = 0.4 + Math.sin(t * 3.0) * 0.1
 
       if (t < hitUntil) {
