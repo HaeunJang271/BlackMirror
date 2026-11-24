@@ -54,7 +54,7 @@ export function OverlayScreens({
               검은 저울
             </h1>
             <p className="mt-3 text-xs leading-relaxed text-ink-muted">
-              자정이 울리면 책상 위 촛불 세 자루에 네 영혼이 묶인다.
+              자정이 울리면 책상 위 촛불 세 자루에 당신의 영혼이 묶인다.
               <br />
               거짓을 피해 진실의 무게로, 이름 잃은 세 망자의 봉인을 부숴라.
             </p>
