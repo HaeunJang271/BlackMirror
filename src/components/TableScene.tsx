@@ -1,6 +1,9 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { BoardCard, BossId, RitualId } from '../types/game'
-import { SceneController } from '../scene/SceneController'
+import {
+  SCENE_REVISION,
+  SceneController,
+} from '../scene/SceneController'
 import type { RitualFxCue } from '../scene/ritualFx'
 import { log } from '../utils/logger'
 
@@ -47,6 +50,19 @@ export function TableScene({
   clickRef.current = onCardClick
   pulseRef.current = onBloodPulse
 
+  const [revision, setRevision] = useState(SCENE_REVISION)
+
+  useEffect(() => {
+    const hot = import.meta.hot
+    if (!hot) return
+    hot.accept('../scene/SceneController', (mod) => {
+      const next = (mod as { SCENE_REVISION?: number } | undefined)
+        ?.SCENE_REVISION
+      if (typeof next === 'number') setRevision(next)
+      else setRevision(Date.now())
+    })
+  }, [])
+
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -59,6 +75,7 @@ export function TableScene({
     }
     controller.setCardClickHandler((id) => clickRef.current(id))
     controllerRef.current = controller
+    log('info', 'TableScene controller mounted', { revision })
 
     let raf = 0
     const poll = () => {
@@ -72,7 +89,7 @@ export function TableScene({
       controller.dispose()
       controllerRef.current = null
     }
-  }, [])
+  }, [revision])
 
   useEffect(() => {
     controllerRef.current?.sync({
@@ -90,6 +107,7 @@ export function TableScene({
       ritualCue,
     })
   }, [
+    revision,
     board,
     candles,
     bossId,

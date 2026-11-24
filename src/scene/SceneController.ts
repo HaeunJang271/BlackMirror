@@ -43,6 +43,9 @@ const MOBILE: CameraFraming = {
   look: new THREE.Vector3(0, 0.55, -0.2),
 }
 
+/** HMR마다 증가 — TableScene이 컨트롤러를 재생성할 때 사용. */
+export const SCENE_REVISION = Date.now()
+
 /**
  * Three.js 1인칭 테이블 씬 컨트롤러.
  */
@@ -74,6 +77,9 @@ export class SceneController {
   private currentBossId: BossId | null = null
   private tintLights: THREE.Light[] = []
   private lastCandles = 3
+  private lastTruthOpened = 0
+  private lastHitPulse = false
+  private scaleReady = false
 
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({
@@ -259,12 +265,28 @@ export class SceneController {
       this.currentBossId = state.bossId
     }
 
-    this.scale.setTilt(
-      Math.min(
-        0.45,
-        (state.expectedDamage / 80) * 0.35 + (state.multiplier - 1) * 0.08,
-      ),
+    const tilt = Math.min(
+      0.45,
+      (state.expectedDamage / 80) * 0.35 + (state.multiplier - 1) * 0.08,
     )
+    this.scale.setTilt(tilt)
+
+    // 보드에서 새로 열린 진실 패 수만큼만 추를 떨어뜨림 (데미지 델타 X)
+    const truthOpened = state.board.filter(
+      (c) => c.revealed && c.face === 'truth' && !c.removed,
+    ).length
+    if (!this.scaleReady) {
+      this.scale.clearWeights()
+      this.lastTruthOpened = truthOpened
+      this.scaleReady = true
+    } else if (truthOpened > this.lastTruthOpened) {
+      const drops = truthOpened - this.lastTruthOpened
+      for (let i = 0; i < drops; i += 1) this.scale.dropWeight()
+      this.lastTruthOpened = truthOpened
+    } else if (truthOpened < this.lastTruthOpened) {
+      this.scale.clearWeights()
+      this.lastTruthOpened = truthOpened
+    }
 
     this.ritualFx.setSaltActive(state.saltActive)
     if (state.saltBreak) this.ritualFx.breakSalt()
@@ -275,7 +297,11 @@ export class SceneController {
     )
     if (state.ritualCue) this.ritualFx.trigger(state.ritualCue)
 
-    if (state.hit) this.hitPulse = true
+    if (state.hit) {
+      this.hitPulse = true
+      if (!this.lastHitPulse) this.scale.slam()
+    }
+    this.lastHitPulse = state.hit
     if (state.nod) this.nodPulse = true
   }
 

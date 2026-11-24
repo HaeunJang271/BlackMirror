@@ -17,6 +17,7 @@ import type { RitualFxCue } from './scene/ritualFx'
 import type { RitualId } from './types/game'
 import { log } from './utils/logger'
 import {
+  playCandleBlowOut,
   playCardFlip,
   playCashOut,
   playCurseHit,
@@ -99,7 +100,9 @@ export default function App() {
           window.setTimeout(() => setSaltBreak(false), 120)
         }
       } else {
-        void playCurseHit()
+        void playCurseHit().then(() => {
+          void playCandleBlowOut()
+        })
         setNodFx(true)
         window.setTimeout(() => setNodFx(false), 100)
       }

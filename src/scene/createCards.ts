@@ -9,6 +9,7 @@ import {
 export interface CardMesh {
   id: string
   group: THREE.Group
+  flipRoot: THREE.Group
   mesh: THREE.Mesh
   basePos: THREE.Vector3
   targetY: number
@@ -26,73 +27,119 @@ export interface CardMesh {
 export interface CardsRig {
   group: THREE.Group
   cards: CardMesh[]
-  /**
-   * 보드 상태로 메시를 동기화한다.
-   */
+  /** 보드 상태로 메시를 동기화한다. */
   syncBoard: (board: BoardCard[]) => void
-  /**
-   * 모바일 세로용으로 카드 간격·크기를 줄인다.
-   */
+  /** 모바일 세로용으로 카드 간격·크기를 줄인다. */
   setMobileLayout: (mobile: boolean) => void
-  /**
-   * 투시 링을 카드 위에 띄운다.
-   */
+  /** 투시 링을 카드 위에 띄운다. */
   playClairvoyance: (cardId: string) => void
-  /**
-   * 금단의 손 — 진실 카드 금빛 플래시.
-   */
+  /** 금단의 손 — 진실 카드 금빛 플래시. */
   playForbiddenFlash: (cardId: string) => void
-  /**
-   * 호버/플립/소멸 애니메이션.
-   */
+  /** 호버/플립/소멸 애니메이션. */
   update: (t: number, hoveredId: string | null) => void
-  /**
-   * Raycaster 대상 메시 목록.
-   */
+  /** Raycaster 대상 메시 목록. */
   getPickables: () => THREE.Object3D[]
 }
 
-// 카드 폭(~0.30)보다 넓은 간격으로 테두리가 겹치지 않게 배치
 const DESKTOP_FAN = [-0.7, -0.35, 0, 0.35, 0.7]
 const MOBILE_FAN = [-0.58, -0.29, 0, 0.29, 0.58]
 const DESKTOP_ROT = [0.06, 0.03, 0, -0.03, -0.06]
 const MOBILE_ROT = [0.05, 0.025, 0, -0.025, -0.05]
+
+const REST_Y = 0.03
+const FLIP_HEIGHT = 0.48
+
+/**
+ * 테이블 관통 없이: 먼저 들어올리고 → 공중에서 뒤집고 → 내린다.
+ */
+function applyFlipPose(card: CardMesh, p: number) {
+  let lift = REST_Y
+  let spin = 0
+  if (p <= 0) {
+    lift = REST_Y
+    spin = 0
+  } else if (p < 0.28) {
+    const t = p / 0.28
+    lift = REST_Y + t * (FLIP_HEIGHT - REST_Y)
+    spin = 0
+  } else if (p < 0.72) {
+    const t = (p - 0.28) / 0.44
+    lift = FLIP_HEIGHT
+    spin = Math.PI * t
+  } else if (p < 1) {
+    const t = (p - 0.72) / 0.28
+    lift = FLIP_HEIGHT + (REST_Y - FLIP_HEIGHT) * t
+    spin = Math.PI
+  } else {
+    lift = REST_Y
+    spin = Math.PI
+  }
+  card.group.position.y = lift
+  card.flipRoot.rotation.x = spin
+}
 
 /**
  * 테이블 위 부채꼴 3D 카드 5장을 생성한다.
  */
 export function createCards(): CardsRig {
   const group = new THREE.Group()
-  group.position.set(0, 0.09, -0.12)
+  group.position.set(0, 0.1, -0.12)
 
   const backTex = createCardBackTexture()
   const truthTex = createTruthFaceTexture()
   const curseTex = createCurseFaceTexture()
-  const edge = new THREE.MeshStandardMaterial({ color: 0x1a1510 })
-  const backMat = new THREE.MeshStandardMaterial({ map: backTex })
-  const truthMat = new THREE.MeshStandardMaterial({ map: truthTex })
-  const curseMat = new THREE.MeshStandardMaterial({ map: curseTex })
+  const edge = new THREE.MeshStandardMaterial({
+    color: 0x1a1510,
+    polygonOffset: true,
+    polygonOffsetFactor: -1,
+    polygonOffsetUnits: -1,
+  })
+  const backMat = new THREE.MeshStandardMaterial({
+    map: backTex,
+    polygonOffset: true,
+    polygonOffsetFactor: -1,
+    polygonOffsetUnits: -1,
+  })
+  const truthMat = new THREE.MeshStandardMaterial({
+    map: truthTex,
+    polygonOffset: true,
+    polygonOffsetFactor: -1,
+    polygonOffsetUnits: -1,
+  })
+  const curseMat = new THREE.MeshStandardMaterial({
+    map: curseTex,
+    polygonOffset: true,
+    polygonOffsetFactor: -1,
+    polygonOffsetUnits: -1,
+  })
 
   const cards: CardMesh[] = []
 
   for (let i = 0; i < 5; i += 1) {
     const mats: THREE.Material[] = [edge, edge, edge, edge, backMat, backMat]
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.42, 0.03), mats)
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.42, 0.028), mats)
     mesh.castShadow = true
+    // 눕힌 상태 고정 — 플립은 flipRoot.rotation.x 로만 처리
+    // Z 180°: 앞면 문양·글자가 보스 쪽이 아닌 플레이어 쪽으로 똑바로
+    mesh.rotation.set(-Math.PI / 2, 0, Math.PI)
+
+    const flipRoot = new THREE.Group()
+    flipRoot.add(mesh)
+
     const cardGroup = new THREE.Group()
     const x = DESKTOP_FAN[i]!
-    cardGroup.position.set(x, 0, -Math.abs(x) * 0.04)
+    cardGroup.position.set(x, REST_Y, -Math.abs(x) * 0.04)
     cardGroup.rotation.y = DESKTOP_ROT[i]!
-    cardGroup.add(mesh)
-    mesh.rotation.x = -Math.PI / 2
+    cardGroup.add(flipRoot)
     group.add(cardGroup)
 
     cards.push({
       id: `slot-${i}`,
       group: cardGroup,
+      flipRoot,
       mesh,
       basePos: cardGroup.position.clone(),
-      targetY: 0,
+      targetY: REST_Y,
       flipProgress: 0,
       revealed: false,
       removed: false,
@@ -124,6 +171,7 @@ export function createCards(): CardsRig {
         transparent: true,
         opacity: 0.9,
         side: THREE.DoubleSide,
+        depthTest: false,
       }),
     )
     ring.rotation.x = -Math.PI / 2
@@ -134,12 +182,13 @@ export function createCards(): CardsRig {
         transparent: true,
         opacity: 0.85,
         side: THREE.DoubleSide,
+        depthTest: false,
       }),
     )
     pupil.rotation.x = -Math.PI / 2
     pupil.position.y = 0.01
     g.add(ring, pupil)
-    g.position.y = 0.18
+    g.position.y = 0.12
     return g
   }
 
@@ -149,12 +198,15 @@ export function createCards(): CardsRig {
     setMobileLayout(mobile: boolean) {
       const fan = mobile ? MOBILE_FAN : DESKTOP_FAN
       const rot = mobile ? MOBILE_ROT : DESKTOP_ROT
-      const scale = mobile ? 0.82 : 1
-      group.scale.setScalar(scale)
+      group.scale.setScalar(mobile ? 0.82 : 1)
       cards.forEach((card, i) => {
         const x = fan[i]!
-        card.basePos.set(x, 0, -Math.abs(x) * 0.04)
-        if (!card.vanishing) {
+        card.basePos.set(x, REST_Y, -Math.abs(x) * 0.04)
+        if (!card.vanishing && card.flipProgress === 0) {
+          card.group.position.x = x
+          card.group.position.z = card.basePos.z
+          card.group.position.y = REST_Y
+        } else {
           card.group.position.x = x
           card.group.position.z = card.basePos.z
         }
@@ -177,11 +229,11 @@ export function createCards(): CardsRig {
           card.vanishing = true
           card.vanishT = 0
           card.removed = true
-        } else if (!data.removed) {
+        } else if (!data.removed && !card.vanishing) {
           card.removed = false
-          card.vanishing = false
           card.group.visible = true
           card.group.scale.setScalar(1)
+          card.group.rotation.z = 0
         }
 
         if (data.revealed && !card.revealed) {
@@ -190,9 +242,10 @@ export function createCards(): CardsRig {
         } else if (!data.revealed && !card.vanishing) {
           card.revealed = false
           card.flipProgress = 0
-          card.mesh.rotation.x = -Math.PI / 2
+          card.flipRoot.rotation.x = 0
+          card.group.position.y = REST_Y
         } else if (card.revealed && card.flipProgress >= 1) {
-          card.mesh.rotation.x = -Math.PI / 2 + Math.PI
+          applyFlipPose(card, 1)
         }
       }
     },
@@ -213,36 +266,34 @@ export function createCards(): CardsRig {
         if (card.vanishing) {
           card.vanishT += 0.028
           const p = Math.min(1, card.vanishT)
-          card.group.position.y = p * 0.55
-          card.group.rotation.y += 0.12
-          card.group.rotation.z = p * 0.8
+          card.group.position.y = REST_Y + p * 0.6
+          card.group.rotation.z = p * 0.9
           card.group.scale.setScalar(1 - p)
           if (p >= 1) {
             card.group.visible = false
             card.vanishing = false
+            card.group.scale.setScalar(1)
+            card.group.rotation.z = 0
           }
           return
         }
 
         if (!card.group.visible) return
 
-        // 플립 중에는 아치로 들어올려 테이블 관통(끼임) 방지
         if (card.revealed && card.flipProgress < 1) {
-          card.flipProgress = Math.min(1, card.flipProgress + 0.055)
-          const p = card.flipProgress
-          card.mesh.rotation.x = -Math.PI / 2 + Math.PI * p
-          card.group.position.y = Math.sin(p * Math.PI) * 0.26
-        } else {
+          card.flipProgress = Math.min(1, card.flipProgress + 0.045)
+          applyFlipPose(card, card.flipProgress)
+        } else if (!card.revealed) {
           const hover = hoveredId === card.id
-          card.targetY = hover && !card.revealed ? 0.08 : 0.01
+          card.targetY = hover ? 0.1 : REST_Y
           card.group.position.y = THREE.MathUtils.lerp(
             card.group.position.y,
             card.targetY,
-            0.15,
+            0.18,
           )
-          if (card.revealed) {
-            card.mesh.rotation.x = -Math.PI / 2 + Math.PI
-          }
+          card.flipRoot.rotation.x = 0
+        } else {
+          applyFlipPose(card, 1)
         }
 
         if (card.peekRing) {

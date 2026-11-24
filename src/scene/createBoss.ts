@@ -1,16 +1,13 @@
 import * as THREE from 'three'
 import type { BossId } from '../types/game'
+import { createBossSignature } from './bossSignatures'
 import { createClothTexture, texturedMat } from './materialFactory'
 
 export interface BossRig {
   group: THREE.Group
-  /**
-   * 보스 종류에 맞춰 가면·악세서리를 교체한다.
-   */
+  /** 보스 종류에 맞춰 가면·악세서리를 교체한다. */
   setBoss: (id: BossId) => void
-  /**
-   * 숨결·피격(상체+양손)·끄덕임 애니메이션.
-   */
+  /** 숨결·피격(상체+양손)·끄덕임·시그니처 회전. */
   update: (t: number, opts: { hit: boolean; nod: boolean }) => void
 }
 
@@ -56,7 +53,7 @@ function createHand(side: 'left' | 'right'): THREE.Group {
 }
 
 /**
- * 드레이프 망토 실루엣 — 박스 팔/어깨 없이 의자 안에 앉은 형태.
+ * 단일 실루엣 보스 — 열린 콘/겹 주름 없이 몸통·후드·얼굴 레이어만.
  */
 export function createBoss(): BossRig {
   const group = new THREE.Group()
@@ -72,58 +69,60 @@ export function createBoss(): BossRig {
     roughness: 0.96,
     bumpScale: 0.07,
   })
+  cloak.side = THREE.FrontSide
 
-  // 몸통을 감싸는 드레이프 원뿔들
-  const drape = new THREE.Mesh(
-    new THREE.ConeGeometry(0.55, 1.15, 7, 1, true),
+  // 닫힌 몸통 (openEnded 금지 — 안쪽 면이 비치면 겹쳐 보임)
+  const body = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.18, 0.48, 1.05, 8),
     cloak,
   )
-  drape.position.set(0, 0.55, 0.02)
-  drape.rotation.x = Math.PI
-  upper.add(drape)
+  body.position.set(0, 0.52, 0)
+  upper.add(body)
 
-  const foldL = new THREE.Mesh(
-    new THREE.ConeGeometry(0.22, 0.9, 5, 1, true),
+  // 어깨
+  const shoulders = new THREE.Mesh(
+    new THREE.SphereGeometry(0.28, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.55),
     cloak,
   )
-  foldL.position.set(-0.28, 0.5, 0.08)
-  foldL.rotation.set(Math.PI, 0, 0.35)
-  const foldR = foldL.clone()
-  foldR.position.x = 0.28
-  foldR.rotation.z = -0.35
-  upper.add(foldL, foldR)
+  shoulders.position.set(0, 0.95, 0)
+  upper.add(shoulders)
 
-  // 깊게 덮인 후드
+  // 후드 — 뒤쪽만 (phiStart로 앞 개방)
   const hood = new THREE.Mesh(
-    new THREE.SphereGeometry(0.28, 6, 5, 0, Math.PI * 2, 0, Math.PI * 0.65),
+    new THREE.SphereGeometry(
+      0.24,
+      10,
+      8,
+      Math.PI * 0.55,
+      Math.PI * 1.1,
+      0,
+      Math.PI * 0.72,
+    ),
     cloak,
   )
-  hood.position.set(0, 1.05, -0.02)
-  hood.rotation.x = 0.35
+  hood.position.set(0, 1.08, -0.02)
   upper.add(hood)
 
-  const hoodCowl = new THREE.Mesh(
-    new THREE.ConeGeometry(0.32, 0.35, 6, 1, true),
-    cloak,
-  )
-  hoodCowl.position.set(0, 1.18, -0.04)
-  hoodCowl.rotation.x = Math.PI
-  upper.add(hoodCowl)
-
+  // 얼굴 어두운 받침 (가면 바로 뒤, 작게)
   const voidFace = new THREE.Mesh(
-    new THREE.SphereGeometry(0.14, 6, 6),
+    new THREE.CircleGeometry(0.12, 12),
     new THREE.MeshStandardMaterial({
-      color: 0x020101,
+      color: 0x000000,
       roughness: 1,
       flatShading: true,
     }),
   )
-  voidFace.position.set(0, 0.98, 0.1)
+  voidFace.position.set(0, 1.05, 0.16)
   upper.add(voidFace)
 
+  // 시그니처는 voidFace 앞 — 몸통과 절대 교차하지 않는 z
   const maskGroup = new THREE.Group()
-  maskGroup.position.set(0, 0.98, 0.16)
+  maskGroup.position.set(0, 1.05, 0.18)
   upper.add(maskGroup)
+
+  const faceLight = new THREE.PointLight(0xc5a059, 1.0, 2.0, 2)
+  faceLight.position.set(0, 0.02, 0.22)
+  maskGroup.add(faceLight)
 
   const eyeMat = new THREE.MeshStandardMaterial({
     color: 0xc5a059,
@@ -139,8 +138,8 @@ export function createBoss(): BossRig {
     new THREE.BoxGeometry(0.028, 0.009, 0.012),
     eyeMat.clone(),
   )
-  leftEye.position.set(-0.045, 0.02, 0.04)
-  rightEye.position.set(0.045, 0.02, 0.04)
+  leftEye.position.set(-0.045, 0.02, 0.02)
+  rightEye.position.set(0.045, 0.02, 0.02)
   maskGroup.add(leftEye, rightEye)
 
   const accessory = new THREE.Group()
@@ -152,96 +151,35 @@ export function createBoss(): BossRig {
 
   let hitUntil = 0
   let nodUntil = 0
+  let spinners: THREE.Object3D[] = []
   const handBase = {
     left: leftHand.position.clone(),
     right: rightHand.position.clone(),
   }
 
   function clearAccessory() {
-    while (accessory.children.length > 0) accessory.remove(accessory.children[0]!)
+    while (accessory.children.length > 0) {
+      accessory.remove(accessory.children[0]!)
+    }
+    spinners = []
   }
 
   function buildMask(id: BossId) {
     clearAccessory()
-    leftEye.visible = true
-    rightEye.visible = true
-    const brass = new THREE.Color(0xc5a059)
-    const pale = new THREE.Color(0xd8d0c4)
-    const curse = new THREE.Color(0x8b1e1e)
-    const applyEyes = (c: THREE.Color) => {
-      eyeMat.color.copy(c)
-      eyeMat.emissive.copy(c)
-      const rm = rightEye.material as THREE.MeshStandardMaterial
-      rm.color.copy(c)
-      rm.emissive.copy(c)
-    }
-
-    if (id === 'blind_clockmaker') {
-      applyEyes(brass)
-      accessory.add(
-        new THREE.Mesh(
-          new THREE.BoxGeometry(0.16, 0.18, 0.02),
-          new THREE.MeshStandardMaterial({
-            color: 0xb8954a,
-            metalness: 0.7,
-            roughness: 0.4,
-            flatShading: true,
-          }),
-        ),
-      )
-      const patch = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.045, 0.045, 0.025, 6),
-        new THREE.MeshStandardMaterial({
-          color: 0xc5a059,
-          metalness: 0.85,
-          roughness: 0.3,
-          flatShading: true,
-        }),
-      )
-      patch.rotation.x = Math.PI / 2
-      patch.position.set(-0.045, 0.02, 0.03)
-      accessory.add(patch)
-      leftEye.visible = false
-    } else if (id === 'mirror_priest') {
-      applyEyes(brass)
-      accessory.add(
-        new THREE.Mesh(
-          new THREE.BoxGeometry(0.17, 0.2, 0.015),
-          new THREE.MeshStandardMaterial({
-            color: pale,
-            roughness: 0.45,
-            flatShading: true,
-          }),
-        ),
-      )
-      const crack = new THREE.Mesh(
-        new THREE.BoxGeometry(0.01, 0.18, 0.01),
-        new THREE.MeshStandardMaterial({ color: 0x8b1e1e, flatShading: true }),
-      )
-      crack.position.set(0.02, 0, 0.02)
-      crack.rotation.z = 0.18
-      accessory.add(crack)
-    } else {
-      applyEyes(curse)
-      accessory.add(
-        new THREE.Mesh(
-          new THREE.BoxGeometry(0.15, 0.16, 0.02),
-          new THREE.MeshStandardMaterial({
-            color: 0x2a1810,
-            roughness: 0.7,
-            flatShading: true,
-          }),
-        ),
-      )
-      const horn = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.22, 5), cloak)
-      const l = horn.clone()
-      const r = horn.clone()
-      l.position.set(-0.12, 0.22, -0.04)
-      r.position.set(0.12, 0.22, -0.04)
-      l.rotation.z = 0.4
-      r.rotation.z = -0.4
-      accessory.add(l, r)
-    }
+    const sig = createBossSignature(id)
+    accessory.add(sig.root)
+    spinners = sig.spinners
+    leftEye.visible = !sig.hideLeftEye
+    rightEye.visible = !sig.hideRightEye
+    eyeMat.color.copy(sig.eyeColor)
+    eyeMat.emissive.copy(sig.eyeColor)
+    eyeMat.emissiveIntensity = id === 'scale_master' ? 3.4 : 2.6
+    const rm = rightEye.material as THREE.MeshStandardMaterial
+    rm.color.copy(sig.eyeColor)
+    rm.emissive.copy(sig.eyeColor)
+    rm.emissiveIntensity = eyeMat.emissiveIntensity
+    faceLight.color.setHex(sig.faceLightColor)
+    faceLight.intensity = sig.faceLightIntensity
   }
 
   buildMask('blind_clockmaker')
@@ -253,6 +191,10 @@ export function createBoss(): BossRig {
       if (opts.hit) hitUntil = t + 0.55
       if (opts.nod) nodUntil = t + 0.7
       upper.position.y = 0.06 + Math.sin(t * 1.35) * 0.018
+
+      spinners.forEach((s, i) => {
+        s.rotation.z += i === 0 ? 0.005 : 0.012 + i * 0.003
+      })
 
       if (t < hitUntil) {
         const k = (hitUntil - t) / 0.55

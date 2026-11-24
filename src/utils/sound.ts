@@ -190,3 +190,62 @@ export async function playTick(): Promise<void> {
   osc.start(t)
   osc.stop(t + 0.04)
 }
+
+/**
+ * 촛불 꺼짐 — 바람(후우) + 심지 치직 밴드패스 노이즈.
+ */
+export async function playCandleBlowOut(): Promise<void> {
+  const audio = await ensureCtx()
+  if (!audio) return
+  const t = audio.currentTime
+
+  // 바람 불어 끄는 소리 (저역 노이즈 후우)
+  const blowBuf = audio.createBuffer(
+    1,
+    Math.floor(audio.sampleRate * 0.35),
+    audio.sampleRate,
+  )
+  const blowData = blowBuf.getChannelData(0)
+  for (let i = 0; i < blowData.length; i += 1) {
+    const env = Math.sin((i / blowData.length) * Math.PI)
+    blowData[i] = (Math.random() * 2 - 1) * env
+  }
+  const blow = audio.createBufferSource()
+  blow.buffer = blowBuf
+  const blowFilter = audio.createBiquadFilter()
+  blowFilter.type = 'bandpass'
+  blowFilter.frequency.value = 420
+  blowFilter.Q.value = 0.55
+  const blowGain = envGain(audio, t, 0.16, 0.02, 0.28)
+  blow.connect(blowFilter)
+  blowFilter.connect(blowGain)
+  blowGain.connect(audio.destination)
+  blow.start(t)
+  blow.stop(t + 0.35)
+
+  // 심지 치직 (고역 짧은 노이즈)
+  const hissBuf = audio.createBuffer(
+    1,
+    Math.floor(audio.sampleRate * 0.18),
+    audio.sampleRate,
+  )
+  const hissData = hissBuf.getChannelData(0)
+  for (let i = 0; i < hissData.length; i += 1) {
+    const fade = 1 - i / hissData.length
+    hissData[i] = (Math.random() * 2 - 1) * fade * fade
+  }
+  const hiss = audio.createBufferSource()
+  hiss.buffer = hissBuf
+  const hissFilter = audio.createBiquadFilter()
+  hissFilter.type = 'bandpass'
+  hissFilter.frequency.value = 3200
+  hissFilter.Q.value = 1.4
+  const hissGain = envGain(audio, t + 0.04, 0.1, 0.005, 0.14)
+  hiss.connect(hissFilter)
+  hissFilter.connect(hissGain)
+  hissGain.connect(audio.destination)
+  hiss.start(t + 0.04)
+  hiss.stop(t + 0.22)
+
+  log('info', 'sfx candle blow out')
+}

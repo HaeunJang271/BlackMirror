@@ -29,35 +29,32 @@ export function createRoom(): RoomRig {
   wall.position.set(0, 1.6, -2.85)
   group.add(wall)
 
-  // 고딕 의자 등받이
+  // 고딕 의자 — 보스 정면 뒤에서 빼 실루엣이 겹치지 않게 우측 후방으로
   const chairMat = texturedMat({
     map: createClothTexture(),
     color: 0x1a1510,
     roughness: 0.92,
     bumpScale: 0.05,
   })
+  const chair = new THREE.Group()
+  chair.position.set(0.95, 0, -2.15)
+  chair.rotation.y = -0.35
   const back = new THREE.Mesh(
-    new THREE.BoxGeometry(0.85, 1.55, 0.12),
+    new THREE.BoxGeometry(0.7, 1.35, 0.1),
     chairMat,
   )
-  back.position.set(0, 1.05, -1.85)
-  group.add(back)
-
-  const peak = new THREE.Mesh(
-    new THREE.ConeGeometry(0.22, 0.45, 4),
-    chairMat,
-  )
-  peak.position.set(0, 1.95, -1.85)
-  group.add(peak)
-
+  back.position.set(0, 0.95, 0)
+  const peak = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.32, 4), chairMat)
+  peak.position.set(0, 1.75, 0)
   const sideL = new THREE.Mesh(
-    new THREE.BoxGeometry(0.12, 1.2, 0.1),
+    new THREE.BoxGeometry(0.1, 1.05, 0.08),
     chairMat,
   )
-  sideL.position.set(-0.4, 0.95, -1.82)
+  sideL.position.set(-0.32, 0.85, 0.02)
   const sideR = sideL.clone()
-  sideR.position.x = 0.4
-  group.add(sideL, sideR)
+  sideR.position.x = 0.32
+  chair.add(back, peak, sideL, sideR)
+  group.add(chair)
 
   // 미세 먼지
   const count = 52
