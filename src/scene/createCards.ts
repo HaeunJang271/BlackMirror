@@ -225,17 +225,24 @@ export function createCards(): CardsRig {
         }
 
         if (!card.group.visible) return
-        const hover = hoveredId === card.id
-        card.targetY = hover && !card.revealed ? 0.08 : 0
-        card.group.position.y = THREE.MathUtils.lerp(
-          card.group.position.y,
-          card.targetY,
-          0.15,
-        )
 
+        // 플립 중에는 아치로 들어올려 테이블 관통(끼임) 방지
         if (card.revealed && card.flipProgress < 1) {
-          card.flipProgress = Math.min(1, card.flipProgress + 0.06)
-          card.mesh.rotation.x = -Math.PI / 2 + Math.PI * card.flipProgress
+          card.flipProgress = Math.min(1, card.flipProgress + 0.055)
+          const p = card.flipProgress
+          card.mesh.rotation.x = -Math.PI / 2 + Math.PI * p
+          card.group.position.y = Math.sin(p * Math.PI) * 0.26
+        } else {
+          const hover = hoveredId === card.id
+          card.targetY = hover && !card.revealed ? 0.08 : 0.01
+          card.group.position.y = THREE.MathUtils.lerp(
+            card.group.position.y,
+            card.targetY,
+            0.15,
+          )
+          if (card.revealed) {
+            card.mesh.rotation.x = -Math.PI / 2 + Math.PI
+          }
         }
 
         if (card.peekRing) {

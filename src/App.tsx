@@ -1,4 +1,5 @@
 import { useEffect, useReducer, useRef, useState } from 'react'
+import { FilmGrain } from './components/FilmGrain'
 import { GameHud } from './components/GameHud'
 import { MuteButton } from './components/MuteButton'
 import { OverlayScreens } from './components/OverlayScreens'
@@ -176,6 +177,8 @@ export default function App() {
           dispatch({ type: 'FLIP_CARD', cardId })
         }}
       />
+
+      <FilmGrain />
 
       {/* 피의 서약 화면 테두리 맥동 */}
       {bloodPulse > 0.05 && (

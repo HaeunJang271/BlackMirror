@@ -5,6 +5,7 @@ import { createBoss } from './createBoss'
 import { createCandles } from './createCandles'
 import { createCards } from './createCards'
 import { createCeilingLamp } from './createCeilingLamp'
+import { createRoom } from './createRoom'
 import { createScale } from './createScale'
 import { createTable } from './createTable'
 import { createRitualFx, type RitualFxCue } from './ritualFx'
@@ -56,6 +57,7 @@ export class SceneController {
   private readonly scale = createScale()
   private readonly ritualFx = createRitualFx()
   private readonly ceilingLamp = createCeilingLamp()
+  private readonly room = createRoom()
   private readonly raycaster = new THREE.Raycaster()
   private readonly pointer = new THREE.Vector2()
   private readonly clock = new THREE.Clock()
@@ -76,17 +78,19 @@ export class SceneController {
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({
       canvas,
-      antialias: true,
+      antialias: false,
       alpha: false,
       powerPreference: 'high-performance',
     })
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-    this.renderer.setClearColor(0x050404, 1)
+    // PS1 로우레즈
+    this.renderer.setPixelRatio(0.55)
+    this.renderer.setClearColor(0x0a0807, 1)
     this.renderer.outputColorSpace = THREE.SRGBColorSpace
+    canvas.style.imageRendering = 'pixelated'
 
     this.scene = new THREE.Scene()
-    this.scene.fog = new THREE.FogExp2(0x080606, 0.055)
-    this.scene.background = new THREE.Color(0x080606)
+    this.scene.fog = new THREE.FogExp2(0x0a0807, 0.048)
+    this.scene.background = new THREE.Color(0x0a0807)
 
     this.camera = new THREE.PerspectiveCamera(DESKTOP.fov, 1, 0.1, 40)
     this.camera.position.copy(DESKTOP.pos)
@@ -100,6 +104,7 @@ export class SceneController {
   }
 
   private buildWorld() {
+    this.scene.add(this.room.group)
     this.scene.add(createTable())
     this.scene.add(this.boss.group)
     this.scene.add(this.candles.group)
@@ -108,16 +113,24 @@ export class SceneController {
     this.scene.add(this.ritualFx.group)
     this.scene.add(this.ceilingLamp.group)
 
-    const hemi = new THREE.HemisphereLight(0x4a4238, 0x080606, 0.55)
-    const fill = new THREE.PointLight(0x3a3228, 0.45, 7)
-    fill.position.set(0.8, 1.2, 1.2)
-    const rim = new THREE.PointLight(0xc5a059, 0.75, 4.5, 1.8)
-    rim.position.set(0.45, 1.35, -2.25)
-    const rimFill = new THREE.PointLight(0x8a7040, 0.4, 3.8, 2)
-    rimFill.position.set(-0.65, 1.1, -2.15)
+    const hemi = new THREE.HemisphereLight(0x3a342c, 0x0a0807, 0.32)
+    const faceKey = new THREE.SpotLight(
+      0xe8d4a8,
+      1.1,
+      5,
+      Math.PI / 9,
+      0.55,
+      1.4,
+    )
+    faceKey.position.set(0.15, 1.55, 0.4)
+    faceKey.target.position.set(0, 1.05, -1.35)
+    const handKey = new THREE.PointLight(0xc5a059, 0.55, 2.2, 2)
+    handKey.position.set(0, 0.35, -0.85)
+    const rim = new THREE.PointLight(0x8a7040, 0.35, 3.5, 2)
+    rim.position.set(0.5, 1.2, -2.1)
 
-    this.scene.add(hemi, fill, rim, rimFill)
-    this.tintLights = [hemi, this.ceilingLamp.spot, fill, rim, rimFill]
+    this.scene.add(hemi, faceKey, faceKey.target, handKey, rim)
+    this.tintLights = [hemi, this.ceilingLamp.spot, faceKey, handKey, rim]
   }
 
   private bindEvents(canvas: HTMLCanvasElement) {
@@ -203,6 +216,7 @@ export class SceneController {
     this.nodPulse = false
     this.candles.update(t)
     this.ceilingLamp.update(t)
+    this.room.update(t)
     this.cards.update(t, this.hoveredId)
     this.scale.update(t)
     this.ritualFx.update(dt, {

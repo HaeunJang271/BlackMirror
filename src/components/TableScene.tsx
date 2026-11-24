@@ -107,7 +107,7 @@ export function TableScene({
   return (
     <canvas
       ref={canvasRef}
-      className="absolute inset-0 h-[100dvh] w-screen touch-none"
+      className="absolute inset-0 h-[100dvh] w-screen touch-none [image-rendering:pixelated]"
       aria-label="검은 저울 테이블"
     />
   )

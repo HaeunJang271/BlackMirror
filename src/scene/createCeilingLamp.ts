@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { createBrassTexture, texturedMat } from './materialFactory'
 
 export interface CeilingLampRig {
   group: THREE.Group
@@ -10,30 +11,39 @@ export interface CeilingLampRig {
 }
 
 /**
- * 1인칭 시야 상단에 보이도록 매달린 전등.
- * 카메라(~y1.6, z2.5)가 테이블을 내려다보므로 갓이 화면 위쪽에 들어오게 배치한다.
+ * 천장 전등 + 위로 뻗는 검은 전선.
  */
 export function createCeilingLamp(): CeilingLampRig {
   const group = new THREE.Group()
-  // 화면 상단 중앙에 걸리도록 — 너무 높으면 FOV 밖
   group.position.set(0, 2.05, 0.55)
 
-  const metal = new THREE.MeshStandardMaterial({
-    color: 0x4a4034,
-    metalness: 0.55,
-    roughness: 0.5,
-    flatShading: true,
-  })
-  const brass = new THREE.MeshStandardMaterial({
-    color: 0xc5a059,
+  const brassMap = createBrassTexture()
+  const brass = texturedMat({
+    map: brassMap,
+    roughness: 0.4,
     metalness: 0.75,
-    roughness: 0.35,
-    emissive: 0x3a2a10,
-    emissiveIntensity: 0.25,
-    flatShading: true,
+    bumpScale: 0.03,
+  })
+  const metal = texturedMat({
+    map: brassMap,
+    color: 0x3a342c,
+    roughness: 0.7,
+    metalness: 0.45,
+    bumpScale: 0.04,
   })
 
-  // 짧은 체인
+  // 천장으로 길게 올라가는 검은 전선
+  const cord = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.01, 0.01, 3.2, 5),
+    new THREE.MeshStandardMaterial({
+      color: 0x0a0908,
+      roughness: 0.95,
+      flatShading: true,
+    }),
+  )
+  cord.position.y = 1.7
+  group.add(cord)
+
   const rod = new THREE.Mesh(
     new THREE.CylinderGeometry(0.02, 0.02, 0.35, 6),
     brass,
@@ -41,24 +51,9 @@ export function createCeilingLamp(): CeilingLampRig {
   rod.position.y = 0.28
   group.add(rod)
 
-  const link = new THREE.Mesh(
-    new THREE.TorusGeometry(0.035, 0.01, 6, 10),
-    brass,
-  )
-  link.position.y = 0.48
-  link.rotation.x = Math.PI / 2
-  group.add(link)
-
-  // 큰 갓 — 시야에서 확실히 보이게
   const shade = new THREE.Mesh(
     new THREE.CylinderGeometry(0.12, 0.48, 0.38, 8, 1, true),
-    new THREE.MeshStandardMaterial({
-      color: 0x2a2218,
-      metalness: 0.35,
-      roughness: 0.65,
-      flatShading: true,
-      side: THREE.DoubleSide,
-    }),
+    metal,
   )
   shade.position.y = -0.05
   group.add(shade)
@@ -76,7 +71,6 @@ export function createCeilingLamp(): CeilingLampRig {
   shadeInner.position.y = -0.05
   group.add(shadeInner)
 
-  // 갓 테두리 링
   const rim = new THREE.Mesh(
     new THREE.TorusGeometry(0.48, 0.02, 6, 16),
     brass,
@@ -86,24 +80,17 @@ export function createCeilingLamp(): CeilingLampRig {
   group.add(rim)
 
   const bulb = new THREE.Mesh(
-    new THREE.SphereGeometry(0.09, 12, 10),
+    new THREE.SphereGeometry(0.09, 8, 6),
     new THREE.MeshStandardMaterial({
       color: 0xfff6e0,
       emissive: 0xffcc66,
       emissiveIntensity: 2.2,
       roughness: 0.25,
+      flatShading: true,
     }),
   )
   bulb.position.y = -0.12
   group.add(bulb)
-
-  // 천장으로 이어지는 가상 줄 (위쪽으로 길게)
-  const cord = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.008, 0.008, 1.2, 4),
-    metal,
-  )
-  cord.position.y = 1.0
-  group.add(cord)
 
   const spot = new THREE.SpotLight(0xffe8c8, 1.85, 12, Math.PI / 3.8, 0.4, 1.0)
   spot.position.set(0, -0.12, 0)

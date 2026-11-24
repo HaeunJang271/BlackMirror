@@ -100,18 +100,25 @@ export function GameHud({
         </div>
       </div>
 
-      {/* 하단 패널 전체 — 화면 오른쪽 정렬 */}
+      {/* 하단 패널 — 가독용으로 살짝 밝게 */}
       <div className="flex w-full justify-end px-3 pb-3">
         <div className="flex w-full max-w-sm items-end gap-2">
-          <div className="min-w-0 flex-1 space-y-2">
-            <div className="flex items-end justify-between gap-3 rounded-sm border border-brass/20 bg-black/50 px-3 py-2">
+          <div
+            className="min-w-0 flex-1 space-y-2 rounded-sm p-2"
+            style={{
+              background:
+                'linear-gradient(180deg, rgba(42,34,24,0.72) 0%, rgba(22,18,14,0.82) 100%)',
+              boxShadow: '0 0 28px rgba(232,168,86,0.12), inset 0 1px 0 rgba(197,160,89,0.18)',
+            }}
+          >
+            <div className="flex items-end justify-between gap-3 rounded-sm border border-brass/35 bg-[#2a2218]/90 px-3 py-2">
               <div>
-                <p className="text-[10px] tracking-widest text-ink-muted">
+                <p className="text-[10px] tracking-widest text-[#cbb896]">
                   예상 데미지
                 </p>
                 <p className="font-[family-name:var(--font-display)] text-3xl brass-text tabular-nums">
                   {expectedDamage}
-                  <span className="ml-2 text-base text-ink-muted">
+                  <span className="ml-2 text-base text-[#d4c4a0]">
                     ×{multiplier.toFixed(1)}
                   </span>
                 </p>
@@ -120,7 +127,7 @@ export function GameHud({
                 type="button"
                 disabled={!canCashOut || inputLocked}
                 onClick={onCashOut}
-                className="pointer-events-auto rounded-sm border border-brass bg-gradient-to-b from-[#3a2e1a] to-[#1a140c] px-4 py-2.5 text-sm text-brass disabled:border-brass/20 disabled:text-ink-muted/40"
+                className="pointer-events-auto rounded-sm border border-brass bg-gradient-to-b from-[#4a3a22] to-[#2a2014] px-4 py-2.5 text-sm font-medium text-[#f0d9a0] disabled:border-brass/20 disabled:text-[#9a8b72]/50"
               >
                 멈추고 정산
               </button>
@@ -135,12 +142,12 @@ export function GameHud({
                     type="button"
                     disabled={inputLocked}
                     onClick={() => onUseRitual(id)}
-                    className="pointer-events-auto rounded-sm border border-brass/45 bg-black/55 px-2 py-1.5 text-left disabled:opacity-40"
+                    className="pointer-events-auto rounded-sm border border-brass/50 bg-[#2c241a]/95 px-2 py-1.5 text-left disabled:opacity-40"
                   >
-                    <p className="truncate text-[11px] text-brass">
+                    <p className="truncate text-[11px] font-medium text-[#e8c878]">
                       {ritual.name}
                     </p>
-                    <p className="line-clamp-2 text-[9px] text-ink-muted">
+                    <p className="line-clamp-2 text-[9px] leading-snug text-[#c4b496]">
                       {ritual.description}
                     </p>
                   </button>
@@ -155,7 +162,7 @@ export function GameHud({
                 return (
                   <div
                     key={i}
-                    className="flex h-8 w-10 items-center justify-center rounded-sm border border-brass/30 bg-black/45 text-[9px] text-brass"
+                    className="flex h-8 w-10 items-center justify-center rounded-sm border border-brass/40 bg-[#2a2218] text-[9px] text-[#e8c878]"
                     title={def ? `${def.name}: ${def.description}` : undefined}
                   >
                     {def ? def.name.slice(0, 2) : '·'}
