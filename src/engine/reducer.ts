@@ -17,7 +17,7 @@ import { applyTruthFlip, createEmptyTurn, markRitualUsed } from './turn'
 
 const MAX_HAND = 4
 const MAX_RELICS = 4
-const MAX_CANDLES = 3
+export const MAX_CANDLES = 3
 const CASH_RESOLVE_MS = 650
 const FAIL_RESOLVE_MS = 850
 
@@ -116,7 +116,7 @@ function beginPlayerTurn(state: GameState): GameState {
     round,
     board,
     hand,
-    turn: createEmptyTurn(),
+    turn: { ...createEmptyTurn(), timerStarted: true },
     lastPeekCardId: null,
     curseFlash: false,
     resolve: null,
@@ -314,29 +314,15 @@ function useRitual(
     case 'swapped_card':
       return { ...next, board: removeOneUnopenedCurse(next.board) }
     case 'ash_breath': {
-      // 이미 썼거나 대기 중이면 손패를 깎지 않음
-      if (state.ashBreathUsedThisRun || state.ashBreathPending) return state
-      // 꺼진 촛불이 있으면 즉시 재점화
-      if (state.candles < MAX_CANDLES) {
-        const candles = Math.min(MAX_CANDLES, state.candles + 1)
-        log('info', 'ash breath immediate relight', {
-          from: state.candles,
-          to: candles,
-        })
-        return {
-          ...next,
-          candles,
-          ashBreathUsedThisRun: true,
-          ashBreathPending: false,
-          turn: { ...next.turn, ashBreathArmed: false },
-        }
-      }
-      // 촛불이 풀이면 다음 성공 정산 때 재점화되도록 대기
-      log('info', 'ash breath pending (candles full)')
+      if (state.ashBreathUsedThisRun || state.ashBreathPending || state.candles >= MAX_CANDLES) return state
+      const candles = state.candles + 1
+      log('info', 'ash breath immediate relight', { from: state.candles, to: candles })
       return {
         ...next,
-        ashBreathPending: true,
-        turn: { ...next.turn, ashBreathArmed: true },
+        candles,
+        ashBreathUsedThisRun: true,
+        ashBreathPending: false,
+        turn: { ...next.turn, ashBreathArmed: false },
       }
     }
     case 'forbidden_hand': {

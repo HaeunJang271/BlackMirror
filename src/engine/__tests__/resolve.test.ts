@@ -22,10 +22,13 @@ describe('RESOLVING 인터미션', () => {
     expect(state.round).toBe(roundBefore + 1)
   })
 
-  it('타이머는 첫 플립 전까지 시작되지 않은 상태다', () => {
+  it('타이머는 플레이어 턴 시작부터 흐르고 패를 열어도 유지된다', () => {
     let state = createInitialState(22)
     state = gameReducer(state, { type: 'START_RUN' })
     state = gameReducer(state, { type: 'CONFIRM_INTRO' })
-    expect(state.turn.timerStarted).toBe(false)
+    expect(state.turn.timerStarted).toBe(true)
+    const truth = state.board.find((c) => c.face === 'truth')!
+    state = gameReducer(state, { type: 'FLIP_CARD', cardId: truth.id })
+    expect(state.turn.timerStarted).toBe(true)
   })
 })

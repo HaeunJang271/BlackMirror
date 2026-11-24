@@ -10,6 +10,7 @@ import { calculateDamage, canCashOut } from './engine/calculator'
 import {
   createInitialState,
   gameReducer,
+  MAX_CANDLES,
   toDamageInput,
 } from './engine/reducer'
 import type { RitualFxCue } from './scene/ritualFx'
@@ -203,6 +204,7 @@ export default function App() {
           multiplier={playing ? displayMult : Math.max(1, displayMult)}
           canCashOut={playing && canCashOut(state.turn.consecutiveTruths)}
           hand={state.hand}
+          ashBreathAvailable={state.candles < MAX_CANDLES && !state.ashBreathUsedThisRun && !state.ashBreathPending}
           relics={state.relics}
           inputLocked={inputLocked}
           onCashOut={() => {

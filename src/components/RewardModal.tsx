@@ -37,13 +37,13 @@ export function RewardModal({ offer, onConfirm }: RewardModalProps) {
         <p className="mt-1 text-xs text-ink-muted">유물을 받고, 의식 카드 하나를 택하라.</p>
 
         <div className="mt-4 rounded-sm border border-brass/30 bg-desk p-3">
-          <p className="text-[10px] tracking-widest text-ink-muted">유물</p>
+          <p className="text-[11px] tracking-widest text-ink-muted">유물</p>
           <p className="mt-1 text-sm text-brass">{relic.name}</p>
-          <p className="mt-1 text-[11px] text-ink-muted">{relic.description}</p>
+          <p className="mt-1 text-[12.1px] text-ink-muted">{relic.description}</p>
         </div>
 
         <div className="mt-3 space-y-2">
-          <p className="text-[10px] tracking-widest text-ink-muted">의식 카드 택1</p>
+          <p className="text-[11px] tracking-widest text-ink-muted">의식 카드 택1</p>
           {offer.ritualOptions.map((id) => {
             const r = RITUALS[id]
             const selected = ritualId === id
@@ -59,7 +59,7 @@ export function RewardModal({ offer, onConfirm }: RewardModalProps) {
                 }`}
               >
                 <p className="text-sm text-brass">{r.name}</p>
-                <p className="text-[11px] text-ink-muted">{r.description}</p>
+                <p className="text-[12.1px] text-ink-muted">{r.description}</p>
               </button>
             )
           })}

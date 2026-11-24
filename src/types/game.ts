@@ -107,7 +107,7 @@ export interface TurnState {
   ashBreathArmed: boolean
   /** 금단의 손으로 복사된 추가 점수 */
   forbiddenHandBonus: number
-  /** 첫 패 플립 이후 타이머 가동 */
+  /** 플레이어 턴 동안 타이머 가동 */
   timerStarted: boolean
 }
 

@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import type { BoardCard, CardFace } from '../types/game'
+import { applyFlipPose, REST_Y, stepPeek } from './cardAnim'
 import {
   createCardBackTexture,
   createCurseFaceTexture,
@@ -20,6 +21,8 @@ export interface CardMesh {
   vanishT: number
   face: CardFace
   faceApplied: CardFace | null
+  peekPhase: 'none' | 'open' | 'hold' | 'close'
+  peekT: number
   peekRing: THREE.Group | null
   flashT: number
 }
@@ -45,38 +48,6 @@ const DESKTOP_FAN = [-0.7, -0.35, 0, 0.35, 0.7]
 const MOBILE_FAN = [-0.58, -0.29, 0, 0.29, 0.58]
 const DESKTOP_ROT = [0.06, 0.03, 0, -0.03, -0.06]
 const MOBILE_ROT = [0.05, 0.025, 0, -0.025, -0.05]
-
-const REST_Y = 0.03
-const FLIP_HEIGHT = 0.48
-
-/**
- * 테이블 관통 없이: 먼저 들어올리고 → 공중에서 뒤집고 → 내린다.
- */
-function applyFlipPose(card: CardMesh, p: number) {
-  let lift = REST_Y
-  let spin = 0
-  if (p <= 0) {
-    lift = REST_Y
-    spin = 0
-  } else if (p < 0.28) {
-    const t = p / 0.28
-    lift = REST_Y + t * (FLIP_HEIGHT - REST_Y)
-    spin = 0
-  } else if (p < 0.72) {
-    const t = (p - 0.28) / 0.44
-    lift = FLIP_HEIGHT
-    spin = Math.PI * t
-  } else if (p < 1) {
-    const t = (p - 0.72) / 0.28
-    lift = FLIP_HEIGHT + (REST_Y - FLIP_HEIGHT) * t
-    spin = Math.PI
-  } else {
-    lift = REST_Y
-    spin = Math.PI
-  }
-  card.group.position.y = lift
-  card.flipRoot.rotation.x = spin
-}
 
 /**
  * 테이블 위 부채꼴 3D 카드 5장을 생성한다.
@@ -147,6 +118,8 @@ export function createCards(): CardsRig {
       vanishT: 0,
       face: 'truth',
       faceApplied: null,
+      peekPhase: 'none',
+      peekT: 0,
       peekRing: null,
       flashT: 0,
     })
@@ -221,6 +194,10 @@ export function createCards(): CardsRig {
           card.group.visible = false
           continue
         }
+        if (card.id !== data.id) {
+          card.peekPhase = 'none'
+          card.peekT = 0
+        }
         card.id = data.id
         card.mesh.userData.cardId = data.id
         applyFace(card, data.face)
@@ -237,9 +214,10 @@ export function createCards(): CardsRig {
         }
 
         if (data.revealed && !card.revealed) {
+          card.peekPhase = 'none'
           card.revealed = true
           card.flipProgress = 0.001
-        } else if (!data.revealed && !card.vanishing) {
+        } else if (!data.revealed && !card.vanishing && card.peekPhase === 'none') {
           card.revealed = false
           card.flipProgress = 0
           card.flipRoot.rotation.x = 0
@@ -251,7 +229,9 @@ export function createCards(): CardsRig {
     },
     playClairvoyance(cardId: string) {
       const card = cards.find((c) => c.id === cardId)
-      if (!card) return
+      if (!card || card.revealed || card.removed) return
+      card.peekPhase = 'open'
+      card.peekT = 0
       if (card.peekRing) card.group.remove(card.peekRing)
       card.peekRing = makePeekRing()
       card.group.add(card.peekRing)
@@ -280,7 +260,9 @@ export function createCards(): CardsRig {
 
         if (!card.group.visible) return
 
-        if (card.revealed && card.flipProgress < 1) {
+        if (!card.revealed && card.peekPhase !== 'none') {
+          stepPeek(card)
+        } else if (card.revealed && card.flipProgress < 1) {
           card.flipProgress = Math.min(1, card.flipProgress + 0.045)
           applyFlipPose(card, card.flipProgress)
         } else if (!card.revealed) {
