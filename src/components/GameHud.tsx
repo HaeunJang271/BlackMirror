@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { RELICS } from '../data/relics'
 import { RITUALS } from '../data/rituals'
 import type { BoardCard, BossDef, RelicId, RitualId } from '../types/game'
+import { countRemainingFaces } from '../utils/boardStats'
 
 interface GameHudProps {
   boss: BossDef
@@ -20,25 +21,7 @@ interface GameHudProps {
 }
 
 /**
- * 남은 미공개 진실/저주 장수를 집계한다.
- */
-export function countRemainingFaces(board: BoardCard[]): {
-  truth: number
-  curse: number
-} {
-  return board.reduce(
-    (acc, card) => {
-      if (card.revealed || card.removed) return acc
-      if (card.face === 'truth') acc.truth += 1
-      else acc.curse += 1
-      return acc
-    },
-    { truth: 0, curse: 0 },
-  )
-}
-
-/**
- * 3D 씬 위 반투명 2D HUD (상·하단 중앙 정렬).
+ * 3D 씬 위 반투명 2D HUD.
  */
 export function GameHud({
   boss,
@@ -61,7 +44,7 @@ export function GameHud({
 
   return (
     <div className="pointer-events-none absolute inset-0 z-10 flex flex-col justify-between">
-      {/* 상단 — 중앙 정렬 */}
+      {/* 상단 */}
       <div className="mx-auto w-full max-w-md px-4 pt-10">
         <div className="rounded-sm border border-brass/25 bg-black/45 px-3 py-2 backdrop-blur-[2px]">
           <div className="flex items-start justify-between gap-2">
@@ -117,64 +100,70 @@ export function GameHud({
         </div>
       </div>
 
-      {/* 하단 — 중앙 정렬 */}
-      <div className="mx-auto w-full max-w-md space-y-2 px-3 pb-3">
-        <div className="flex items-end justify-between gap-3 rounded-sm border border-brass/20 bg-black/50 px-3 py-2">
-          <div>
-            <p className="text-[10px] tracking-widest text-ink-muted">
-              예상 데미지
-            </p>
-            <p className="font-[family-name:var(--font-display)] text-3xl brass-text tabular-nums">
-              {expectedDamage}
-              <span className="ml-2 text-base text-ink-muted">
-                ×{multiplier.toFixed(1)}
-              </span>
-            </p>
-          </div>
-          <button
-            type="button"
-            disabled={!canCashOut || inputLocked}
-            onClick={onCashOut}
-            className="pointer-events-auto rounded-sm border border-brass bg-gradient-to-b from-[#3a2e1a] to-[#1a140c] px-4 py-2.5 text-sm text-brass disabled:border-brass/20 disabled:text-ink-muted/40"
-          >
-            멈추고 정산
-          </button>
-        </div>
-
-        <div className="flex justify-center gap-1">
-          {Array.from({ length: 4 }).map((_, i) => {
-            const id = relics[i]
-            const def = id ? RELICS[id] : null
-            return (
-              <div
-                key={i}
-                className="flex h-8 w-12 items-center justify-center rounded-sm border border-brass/30 bg-black/45 text-[9px] text-brass"
-                title={def ? `${def.name}: ${def.description}` : undefined}
-              >
-                {def ? def.name.slice(0, 2) : '·'}
-              </div>
-            )
-          })}
-        </div>
-
-        <div className="mx-auto grid w-full max-w-sm grid-cols-2 gap-1.5">
-          {hand.map((id) => {
-            const ritual = RITUALS[id]
-            return (
-              <button
-                key={id}
-                type="button"
-                disabled={inputLocked}
-                onClick={() => onUseRitual(id)}
-                className="pointer-events-auto rounded-sm border border-brass/45 bg-black/55 px-2 py-1.5 text-left disabled:opacity-40"
-              >
-                <p className="truncate text-[11px] text-brass">{ritual.name}</p>
-                <p className="line-clamp-2 text-[9px] text-ink-muted">
-                  {ritual.description}
+      {/* 하단 패널 전체 — 화면 오른쪽 정렬 */}
+      <div className="flex w-full justify-end px-3 pb-3">
+        <div className="flex w-full max-w-sm items-end gap-2">
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="flex items-end justify-between gap-3 rounded-sm border border-brass/20 bg-black/50 px-3 py-2">
+              <div>
+                <p className="text-[10px] tracking-widest text-ink-muted">
+                  예상 데미지
                 </p>
+                <p className="font-[family-name:var(--font-display)] text-3xl brass-text tabular-nums">
+                  {expectedDamage}
+                  <span className="ml-2 text-base text-ink-muted">
+                    ×{multiplier.toFixed(1)}
+                  </span>
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={!canCashOut || inputLocked}
+                onClick={onCashOut}
+                className="pointer-events-auto rounded-sm border border-brass bg-gradient-to-b from-[#3a2e1a] to-[#1a140c] px-4 py-2.5 text-sm text-brass disabled:border-brass/20 disabled:text-ink-muted/40"
+              >
+                멈추고 정산
               </button>
-            )
-          })}
+            </div>
+
+            <div className="grid grid-cols-2 gap-1.5">
+              {hand.map((id) => {
+                const ritual = RITUALS[id]
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    disabled={inputLocked}
+                    onClick={() => onUseRitual(id)}
+                    className="pointer-events-auto rounded-sm border border-brass/45 bg-black/55 px-2 py-1.5 text-left disabled:opacity-40"
+                  >
+                    <p className="truncate text-[11px] text-brass">
+                      {ritual.name}
+                    </p>
+                    <p className="line-clamp-2 text-[9px] text-ink-muted">
+                      {ritual.description}
+                    </p>
+                  </button>
+                )
+              })}
+            </div>
+
+            <div className="flex justify-end gap-1" aria-label="유물">
+              {Array.from({ length: 4 }).map((_, i) => {
+                const id = relics[i]
+                const def = id ? RELICS[id] : null
+                return (
+                  <div
+                    key={i}
+                    className="flex h-8 w-10 items-center justify-center rounded-sm border border-brass/30 bg-black/45 text-[9px] text-brass"
+                    title={def ? `${def.name}: ${def.description}` : undefined}
+                  >
+                    {def ? def.name.slice(0, 2) : '·'}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
         </div>
       </div>
     </div>

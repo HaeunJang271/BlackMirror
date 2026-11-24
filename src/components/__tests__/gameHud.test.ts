@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { BoardCard } from '../../types/game'
-import { countRemainingFaces } from '../GameHud'
+import { countRemainingFaces } from '../../utils/boardStats'
 
 function card(partial: Partial<BoardCard> & Pick<BoardCard, 'face'>): BoardCard {
   return {

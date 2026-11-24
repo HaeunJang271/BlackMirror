@@ -19,8 +19,8 @@ export interface CandleRig {
  */
 export function createCandles(): CandleRig {
   const group = new THREE.Group()
-  // 화면 안쪽으로 모아 3개 모두 보이게
-  group.position.set(-0.88, 0.06, 0.05)
+  // 1인칭 기준 카드 뒤(보스 쪽)로 배치
+  group.position.set(-0.72, 0.06, -0.62)
 
   const flames: THREE.Mesh[] = []
   const lights: THREE.PointLight[] = []
@@ -54,7 +54,7 @@ export function createCandles(): CandleRig {
     candle.add(flame)
     flames.push(flame)
 
-    const light = new THREE.PointLight(0xe8a856, 0.9, 3.5, 2)
+    const light = new THREE.PointLight(0xe8a856, 1.15, 4.2, 2)
     light.position.set(0, 0.28, 0)
     candle.add(light)
     lights.push(light)
@@ -70,7 +70,7 @@ export function createCandles(): CandleRig {
       for (let i = 0; i < 3; i += 1) {
         const lit = i < count
         flames[i]!.visible = lit
-        lights[i]!.intensity = lit ? 0.85 : 0
+        lights[i]!.intensity = lit ? 1.1 : 0
         bases[i]!.material = new THREE.MeshStandardMaterial({
           color: lit ? 0x2a1c10 : 0x12100e,
           roughness: 0.9,
@@ -84,7 +84,7 @@ export function createCandles(): CandleRig {
         if (!flame.visible) return
         const wobble = 1 + Math.sin(t * 8 + i * 1.7) * 0.12
         flame.scale.set(0.65 * wobble, 1.25 + Math.sin(t * 10 + i) * 0.15, 0.65)
-        lights[i]!.intensity = 0.7 + Math.sin(t * 9 + i) * 0.18
+        lights[i]!.intensity = 0.95 + Math.sin(t * 9 + i) * 0.2
       })
     },
   }

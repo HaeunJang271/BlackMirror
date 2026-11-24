@@ -14,7 +14,8 @@ export interface ScaleRig {
  */
 export function createScale(): ScaleRig {
   const group = new THREE.Group()
-  group.position.set(1.05, 0.08, -0.05)
+  // 4~5번째 카드 사이, 살짝 보스 쪽
+  group.position.set(0.55, 0.08, -0.62)
 
   const brass = new THREE.MeshStandardMaterial({
     color: 0xc5a059,

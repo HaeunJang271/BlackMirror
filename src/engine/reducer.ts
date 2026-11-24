@@ -151,7 +151,10 @@ function enterResolve(
   }
 }
 
-function applyCashOut(state: GameState): GameState {
+function applyCashOut(
+  state: GameState,
+  options: { saltBreak?: boolean } = {},
+): GameState {
   if (!canCashOut(state.turn.consecutiveTruths)) return state
   const breakdown = calculateDamage(toDamageInput(state))
   let candles = state.candles
@@ -183,6 +186,7 @@ function applyCashOut(state: GameState): GameState {
       candlesAfter: candles,
       next,
       durationMs: CASH_RESOLVE_MS,
+      saltBreak: options.saltBreak,
     },
   )
 }
@@ -190,11 +194,14 @@ function applyCashOut(state: GameState): GameState {
 function handleCurse(state: GameState): GameState {
   if (state.turn.saltCircleActive) {
     log('info', 'salt circle defend + auto cash out')
-    return applyCashOut({
-      ...state,
-      turn: { ...state.turn, saltCircleActive: false },
-      curseFlash: true,
-    })
+    return applyCashOut(
+      {
+        ...state,
+        turn: { ...state.turn, saltCircleActive: false },
+        curseFlash: true,
+      },
+      { saltBreak: true },
+    )
   }
 
   const loss = state.turn.bloodPactActive ? 2 : 1

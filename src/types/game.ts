@@ -27,6 +27,8 @@ export interface ResolveInfo {
   next: ResolveNext
   /** 연출 시간(ms) */
   durationMs: number
+  /** 소금의 원이 방어로 깨질 때 */
+  saltBreak?: boolean
 }
 
 /** 의식 카드 ID */

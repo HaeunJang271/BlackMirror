@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
-import type { BoardCard, BossId } from '../types/game'
+import type { BoardCard, BossId, RitualId } from '../types/game'
 import { SceneController } from '../scene/SceneController'
+import type { RitualFxCue } from '../scene/ritualFx'
 import { log } from '../utils/logger'
 
 interface TableSceneProps {
@@ -12,7 +13,12 @@ interface TableSceneProps {
   interactive: boolean
   hit: boolean
   nod: boolean
+  saltActive: boolean
+  bloodActive: boolean
+  saltBreak: boolean
+  ritualCue: RitualFxCue | null
   onCardClick: (cardId: string) => void
+  onBloodPulse?: (pulse: number) => void
 }
 
 /**
@@ -27,12 +33,19 @@ export function TableScene({
   interactive,
   hit,
   nod,
+  saltActive,
+  bloodActive,
+  saltBreak,
+  ritualCue,
   onCardClick,
+  onBloodPulse,
 }: TableSceneProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const controllerRef = useRef<SceneController | null>(null)
   const clickRef = useRef(onCardClick)
+  const pulseRef = useRef(onBloodPulse)
   clickRef.current = onCardClick
+  pulseRef.current = onBloodPulse
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -46,7 +59,16 @@ export function TableScene({
     }
     controller.setCardClickHandler((id) => clickRef.current(id))
     controllerRef.current = controller
+
+    let raf = 0
+    const poll = () => {
+      pulseRef.current?.(controller.getBloodPulse())
+      raf = requestAnimationFrame(poll)
+    }
+    raf = requestAnimationFrame(poll)
+
     return () => {
+      cancelAnimationFrame(raf)
       controller.dispose()
       controllerRef.current = null
     }
@@ -62,6 +84,10 @@ export function TableScene({
       interactive,
       hit,
       nod,
+      saltActive,
+      bloodActive,
+      saltBreak,
+      ritualCue,
     })
   }, [
     board,
@@ -72,6 +98,10 @@ export function TableScene({
     interactive,
     hit,
     nod,
+    saltActive,
+    bloodActive,
+    saltBreak,
+    ritualCue,
   ])
 
   return (
@@ -82,3 +112,5 @@ export function TableScene({
     />
   )
 }
+
+export type { RitualId }

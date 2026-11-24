@@ -12,6 +12,8 @@ import {
   gameReducer,
   toDamageInput,
 } from './engine/reducer'
+import type { RitualFxCue } from './scene/ritualFx'
+import type { RitualId } from './types/game'
 import { log } from './utils/logger'
 import {
   playCardFlip,
@@ -23,7 +25,7 @@ import {
 } from './utils/sound'
 
 /**
- * 《검은 저울》 Phase 3: 1인칭 3D 테이블 + 2D HUD.
+ * 《검은 저울》 Phase 3: 1인칭 3D 테이블 + 의식 FX + 모바일 카메라.
  */
 export default function App() {
   const [state, dispatch] = useReducer(gameReducer, undefined, () =>
@@ -33,15 +35,19 @@ export default function App() {
   const prevPhase = useRef(state.phase)
   const prevTruths = useRef(0)
   const lastTickSec = useRef<number | null>(null)
-  const fxToken = useRef(0)
+  const ritualKey = useRef(0)
+
   const [hitFx, setHitFx] = useState(false)
   const [nodFx, setNodFx] = useState(false)
+  const [saltBreak, setSaltBreak] = useState(false)
+  const [ritualCue, setRitualCue] = useState<RitualFxCue | null>(null)
+  const [bloodPulse, setBloodPulse] = useState(0)
+  const [timerSec, setTimerSec] = useState<number | null>(null)
 
   const boss = getBoss(Math.min(state.stageIndex, 2))
   const breakdown = calculateDamage(toDamageInput(state))
   const playing = state.phase === 'PLAYER_TURN'
   const resolving = state.phase === 'RESOLVING'
-  const [timerSec, setTimerSec] = useState<number | null>(null)
 
   useEffect(() => {
     const shouldRun =
@@ -51,7 +57,6 @@ export default function App() {
       lastTickSec.current = null
       return
     }
-
     const limit = boss.turnTimerSec!
     setTimerSec(limit)
     const startedAt = Date.now()
@@ -84,11 +89,14 @@ export default function App() {
 
   useEffect(() => {
     if (state.phase === 'RESOLVING' && prevPhase.current !== 'RESOLVING') {
-      fxToken.current += 1
       if (state.resolve?.kind === 'cash_out') {
         void playCashOut()
         setHitFx(true)
         window.setTimeout(() => setHitFx(false), 100)
+        if (state.resolve.saltBreak) {
+          setSaltBreak(true)
+          window.setTimeout(() => setSaltBreak(false), 120)
+        }
       } else {
         void playCurseHit()
         setNodFx(true)
@@ -96,7 +104,7 @@ export default function App() {
       }
     }
     prevPhase.current = state.phase
-  }, [state.phase, state.resolve?.kind])
+  }, [state.phase, state.resolve])
 
   useEffect(() => {
     if (
@@ -117,6 +125,24 @@ export default function App() {
     )
     return () => window.clearTimeout(id)
   }, [state.curseFlash])
+
+  const fireRitual = (ritualId: RitualId, targetCardId?: string) => {
+    ritualKey.current += 1
+    const cue: RitualFxCue = {
+      ritualId,
+      targetCardId,
+      key: ritualKey.current,
+    }
+    // 금단의 손: 마지막 연 진실 카드
+    if (ritualId === 'forbidden_hand') {
+      const opened = [...state.board]
+        .reverse()
+        .find((c) => c.revealed && c.face === 'truth' && !c.removed)
+      cue.targetCardId = opened?.id
+    }
+    setRitualCue(cue)
+    window.setTimeout(() => setRitualCue(null), 700)
+  }
 
   const displayMult =
     breakdown.comboMultiplier *
@@ -139,12 +165,27 @@ export default function App() {
         interactive={playing}
         hit={hitFx}
         nod={nodFx}
+        saltActive={state.turn.saltCircleActive}
+        bloodActive={state.turn.bloodPactActive}
+        saltBreak={saltBreak}
+        ritualCue={ritualCue}
+        onBloodPulse={setBloodPulse}
         onCardClick={(cardId) => {
           void unlockAudio()
           void playCardFlip()
           dispatch({ type: 'FLIP_CARD', cardId })
         }}
       />
+
+      {/* 피의 서약 화면 테두리 맥동 */}
+      {bloodPulse > 0.05 && (
+        <div
+          className="pointer-events-none absolute inset-0 z-[15]"
+          style={{
+            boxShadow: `inset 0 0 ${40 + bloodPulse * 50}px rgba(139,30,30,${0.25 + bloodPulse * 0.35})`,
+          }}
+        />
+      )}
 
       <div className="pointer-events-none absolute inset-0 z-20">
         <MuteButton />
@@ -171,10 +212,12 @@ export default function App() {
             void unlockAudio()
             const needsTarget = ritualId === 'clairvoyant_coin'
             const target = state.board.find((c) => !c.revealed && !c.removed)
+            const targetCardId = needsTarget ? target?.id : undefined
+            fireRitual(ritualId, targetCardId)
             dispatch({
               type: 'USE_RITUAL',
               ritualId,
-              targetCardId: needsTarget ? target?.id : undefined,
+              targetCardId,
             })
           }}
         />
