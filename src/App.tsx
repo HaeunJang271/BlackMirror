@@ -1,11 +1,10 @@
 import { useEffect, useReducer, useRef, useState } from 'react'
+import { GameHud } from './components/GameHud'
 import { MuteButton } from './components/MuteButton'
 import { OverlayScreens } from './components/OverlayScreens'
-import { PlayerDock } from './components/PlayerDock'
 import { ResolveOverlay } from './components/ResolveOverlay'
 import { RewardModal } from './components/RewardModal'
-import { ScaleBoard } from './components/ScaleBoard'
-import { StageHeader } from './components/StageHeader'
+import { TableScene } from './components/TableScene'
 import { getBoss } from './data/bosses'
 import { calculateDamage, canCashOut } from './engine/calculator'
 import {
@@ -24,7 +23,7 @@ import {
 } from './utils/sound'
 
 /**
- * 《검은 저울》 Phase 2 루트. 로직은 reducer, 연출·사운드는 여기서 연결.
+ * 《검은 저울》 Phase 3: 1인칭 3D 테이블 + 2D HUD.
  */
 export default function App() {
   const [state, dispatch] = useReducer(gameReducer, undefined, () =>
@@ -34,13 +33,16 @@ export default function App() {
   const prevPhase = useRef(state.phase)
   const prevTruths = useRef(0)
   const lastTickSec = useRef<number | null>(null)
+  const fxToken = useRef(0)
+  const [hitFx, setHitFx] = useState(false)
+  const [nodFx, setNodFx] = useState(false)
+
   const boss = getBoss(Math.min(state.stageIndex, 2))
   const breakdown = calculateDamage(toDamageInput(state))
   const playing = state.phase === 'PLAYER_TURN'
   const resolving = state.phase === 'RESOLVING'
   const [timerSec, setTimerSec] = useState<number | null>(null)
 
-  // 첫 패 플립 이후에만 타이머 가동
   useEffect(() => {
     const shouldRun =
       playing && Boolean(boss.turnTimerSec) && state.turn.timerStarted
@@ -53,7 +55,6 @@ export default function App() {
     const limit = boss.turnTimerSec!
     setTimerSec(limit)
     const startedAt = Date.now()
-
     const tick = window.setInterval(() => {
       const left = Math.max(
         0,
@@ -70,11 +71,9 @@ export default function App() {
         dispatch({ type: 'TIMER_EXPIRED' })
       }
     }, 200)
-
     return () => window.clearInterval(tick)
   }, [playing, boss.turnTimerSec, state.round, state.turn.timerStarted])
 
-  // RESOLVING 인터미션 종료
   useEffect(() => {
     if (!resolving || !state.resolve) return
     const id = window.setTimeout(() => {
@@ -83,16 +82,22 @@ export default function App() {
     return () => window.clearTimeout(id)
   }, [resolving, state.resolve])
 
-  // 결과 진입 사운드
   useEffect(() => {
     if (state.phase === 'RESOLVING' && prevPhase.current !== 'RESOLVING') {
-      if (state.resolve?.kind === 'cash_out') void playCashOut()
-      else void playCurseHit()
+      fxToken.current += 1
+      if (state.resolve?.kind === 'cash_out') {
+        void playCashOut()
+        setHitFx(true)
+        window.setTimeout(() => setHitFx(false), 100)
+      } else {
+        void playCurseHit()
+        setNodFx(true)
+        window.setTimeout(() => setNodFx(false), 100)
+      }
     }
     prevPhase.current = state.phase
   }, [state.phase, state.resolve?.kind])
 
-  // 진실 콤보 차임
   useEffect(() => {
     if (
       playing &&
@@ -117,53 +122,51 @@ export default function App() {
     breakdown.comboMultiplier *
     breakdown.ritualMultiplier *
     breakdown.relicMultiplier
-
-  const hitFlash =
-    resolving && state.resolve?.kind === 'cash_out' && state.lastDamage > 0
-
   const inputLocked = !playing
+  const showHud =
+    state.phase === 'PLAYER_TURN' ||
+    state.phase === 'RESOLVING' ||
+    state.phase === 'REWARD'
 
   return (
-    <div className="desk-grain mx-auto flex h-[100dvh] w-full max-w-md flex-col overflow-hidden">
-      <div className="relative flex h-full min-h-0 flex-col">
-        <MuteButton />
+    <div className="relative h-[100dvh] w-screen overflow-hidden bg-[#050404]">
+      <TableScene
+        board={state.board}
+        candles={state.candles}
+        bossId={boss.id}
+        expectedDamage={playing ? breakdown.finalDamage : state.lastDamage}
+        multiplier={playing ? displayMult : Math.max(1, displayMult)}
+        interactive={playing}
+        hit={hitFx}
+        nod={nodFx}
+        onCardClick={(cardId) => {
+          void unlockAudio()
+          void playCardFlip()
+          dispatch({ type: 'FLIP_CARD', cardId })
+        }}
+      />
 
-        <StageHeader
+      <div className="pointer-events-none absolute inset-0 z-20">
+        <MuteButton />
+      </div>
+
+      {showHud && (
+        <GameHud
           boss={boss}
           bossHp={state.bossHp}
           stageIndex={state.stageIndex}
-          hitFlash={Boolean(hitFlash)}
-        />
-
-        <ScaleBoard
           board={state.board}
+          timerSec={playing && boss.turnTimerSec ? timerSec : null}
           expectedDamage={playing ? breakdown.finalDamage : state.lastDamage}
           multiplier={playing ? displayMult : Math.max(1, displayMult)}
           canCashOut={playing && canCashOut(state.turn.consecutiveTruths)}
-          flipDisabled={inputLocked}
-          lastDamage={state.lastDamage}
-          timerSec={
-            playing && boss.turnTimerSec
-              ? timerSec
-              : null
-          }
-          onFlip={(cardId) => {
-            void unlockAudio()
-            void playCardFlip()
-            dispatch({ type: 'FLIP_CARD', cardId })
-          }}
+          hand={state.hand}
+          relics={state.relics}
+          inputLocked={inputLocked}
           onCashOut={() => {
             void unlockAudio()
             dispatch({ type: 'CASH_OUT' })
           }}
-        />
-
-        <PlayerDock
-          candles={state.candles}
-          relics={state.relics}
-          hand={state.hand}
-          disabled={inputLocked}
-          resolve={state.resolve}
           onUseRitual={(ritualId) => {
             void unlockAudio()
             const needsTarget = ritualId === 'clairvoyant_coin'
@@ -175,40 +178,38 @@ export default function App() {
             })
           }}
         />
+      )}
 
-        {resolving && state.resolve && (
-          <ResolveOverlay info={state.resolve} />
-        )}
+      {resolving && state.resolve && <ResolveOverlay info={state.resolve} />}
 
-        <OverlayScreens
-          phase={state.phase}
-          boss={boss}
-          onStart={() => {
-            void unlockAudio()
-            revivedRef.current = false
-            dispatch({ type: 'START_RUN' })
-          }}
-          onConfirmIntro={() => dispatch({ type: 'CONFIRM_INTRO' })}
-          onRetry={() => {
-            revivedRef.current = false
-            dispatch({ type: 'BACK_TO_TITLE' })
-          }}
-          onRevive={() => {
-            if (revivedRef.current) return
-            revivedRef.current = true
-            dispatch({ type: 'REVIVE_AD' })
-          }}
+      <OverlayScreens
+        phase={state.phase}
+        boss={boss}
+        onStart={() => {
+          void unlockAudio()
+          revivedRef.current = false
+          dispatch({ type: 'START_RUN' })
+        }}
+        onConfirmIntro={() => dispatch({ type: 'CONFIRM_INTRO' })}
+        onRetry={() => {
+          revivedRef.current = false
+          dispatch({ type: 'BACK_TO_TITLE' })
+        }}
+        onRevive={() => {
+          if (revivedRef.current) return
+          revivedRef.current = true
+          dispatch({ type: 'REVIVE_AD' })
+        }}
+      />
+
+      {state.phase === 'REWARD' && state.reward && (
+        <RewardModal
+          offer={state.reward}
+          onConfirm={(relicId, ritualId) =>
+            dispatch({ type: 'SELECT_REWARD', relicId, ritualId })
+          }
         />
-
-        {state.phase === 'REWARD' && state.reward && (
-          <RewardModal
-            offer={state.reward}
-            onConfirm={(relicId, ritualId) =>
-              dispatch({ type: 'SELECT_REWARD', relicId, ritualId })
-            }
-          />
-        )}
-      </div>
+      )}
     </div>
   )
 }

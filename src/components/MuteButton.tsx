@@ -11,7 +11,7 @@ export function MuteButton() {
   return (
     <button
       type="button"
-      className="absolute right-3 top-3 z-40 flex h-8 w-8 items-center justify-center rounded-sm border border-brass/30 bg-desk/70 text-brass/80"
+      className="pointer-events-auto absolute right-3 top-3 z-40 flex h-8 w-8 items-center justify-center rounded-sm border border-brass/30 bg-desk/70 text-brass/80"
       aria-label={muted ? '소리 켜기' : '음소거'}
       onClick={() => {
         void unlockAudio()
