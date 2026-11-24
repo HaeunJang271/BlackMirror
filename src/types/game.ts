@@ -111,7 +111,7 @@ export interface TurnState {
   ashBreathArmed: boolean
   /** 금단의 손으로 복사된 추가 점수 */
   forbiddenHandBonus: number
-  /** 첫 카드 또는 의식 사용 후 타이머 가동 */
+  /** 첫 카드 공개 후 타이머 가동 */
   timerStarted: boolean
 }
 
@@ -128,6 +128,7 @@ export interface GameState {
   stageIndex: number
   bossHp: number
   candles: number
+  hasUsedRevive: boolean
   board: BoardCard[]
   hand: RitualId[]
   /** 보충 가능한 소모 의식 */

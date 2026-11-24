@@ -29,6 +29,7 @@ export function createInitialState(seed = Date.now()): GameState {
     stageIndex: 0,
     bossHp: getBoss(0).maxHp,
     candles: MAX_CANDLES,
+    hasUsedRevive: false,
     board: [],
     hand: [],
     spentRituals: [],
@@ -281,7 +282,7 @@ function applyRitual(
     ...state,
     hand,
     spentRituals: [...state.spentRituals, ritualId],
-    turn: { ...markRitualUsed(state.turn, ritualId), timerStarted: true },
+    turn: markRitualUsed(state.turn, ritualId),
   }
 
   switch (ritualId) {
@@ -397,8 +398,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     case 'CLEAR_CURSE_FLASH':
       return { ...state, curseFlash: false }
     case 'REVIVE_AD':
-      if (state.phase !== 'GAME_OVER') return state
-      return beginPlayerTurn({ ...state, candles: 1, phase: 'PLAYER_TURN' })
+      if (state.phase !== 'GAME_OVER' || state.hasUsedRevive) return state
+      return beginPlayerTurn({ ...state, candles: 1, hasUsedRevive: true, phase: 'PLAYER_TURN' })
     case 'BACK_TO_TITLE':
       return createInitialState(state.rngSeed + 1)
     case 'TIMER_EXPIRED':

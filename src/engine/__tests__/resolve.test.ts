@@ -32,13 +32,18 @@ describe('RESOLVING 인터미션', () => {
     expect(state.turn.timerStarted).toBe(true)
   })
 
-  it('유효한 의식 사용이 타이머를 시작하고 사용할 수 없는 의식은 시작하지 않는다', () => {
+  it('의식 사용은 첫 패를 열기 전 타이머를 시작하지 않고 시작된 타이머도 유지한다', () => {
     let state = gameReducer(createInitialState(22), { type: 'START_RUN' })
     state = gameReducer(state, { type: 'CONFIRM_INTRO' })
-    state = { ...state, hand: ['ash_breath', 'salt_circle'] }
+    state = { ...state, hand: ['ash_breath', 'salt_circle', 'blood_pact'] }
     state = gameReducer(state, { type: 'USE_RITUAL', ritualId: 'ash_breath' })
     expect(state.turn.timerStarted).toBe(false)
     state = gameReducer(state, { type: 'USE_RITUAL', ritualId: 'salt_circle' })
+    expect(state.turn.timerStarted).toBe(false)
+    const truth = state.board.find((card) => card.face === 'truth')!
+    state = gameReducer(state, { type: 'FLIP_CARD', cardId: truth.id })
+    expect(state.turn.timerStarted).toBe(true)
+    state = gameReducer(state, { type: 'USE_RITUAL', ritualId: 'blood_pact' })
     expect(state.turn.timerStarted).toBe(true)
   })
 

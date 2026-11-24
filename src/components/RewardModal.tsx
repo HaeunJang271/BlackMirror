@@ -16,7 +16,8 @@ export function RewardModal({ offer, refillCount, canRelight, defeatLine, onConf
   const [choice, setChoice] = useState<RewardChoice>(refillCount > 0 || !canRelight ? 'rituals' : 'candle')
 
   return (
-    <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/75 px-4 py-4">
+    <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/75 px-4 py-4"
+      style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))', paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
         className="max-h-full w-full max-w-sm overflow-y-auto rounded-md border border-brass/40 bg-desk-lift p-4 shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
         <h2 className="font-[family-name:var(--font-display)] text-xl brass-text">봉인이 풀렸다</h2>

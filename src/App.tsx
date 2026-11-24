@@ -8,6 +8,8 @@ import { TableScene } from './components/TableScene'
 import { getBoss } from './data/bosses'
 import { MAX_HAND } from './engine/constants'
 import { Volume2, VolumeX } from 'lucide-react'
+import { Capacitor } from '@capacitor/core'
+import { App as CapacitorApp } from '@capacitor/app'
 import { calculateDamage, canCashOut } from './engine/calculator'
 import {
   createInitialState,
@@ -19,8 +21,10 @@ import type { RitualFxCue } from './scene/ritualFx'
 import type { RitualId } from './types/game'
 import { log } from './utils/logger'
 import { getBossLine, getBossReaction } from './utils/bossDialogue'
+import { preloadRewardedAd, showRewardedAd } from './utils/rewardedAd'
 import {
   playCandleBlowOut,
+  playCandleLit,
   playCardFlip,
   playBossDefeat,
   playCashOut,
@@ -33,6 +37,8 @@ import {
   unlockAudio,
 } from './utils/sound'
 
+const IS_ONESTORE = import.meta.env.VITE_PLATFORM === 'onestore'
+
 /**
  * 《검은 저울》 Phase 3: 1인칭 3D 테이블 + 의식 FX + 모바일 카메라.
  */
@@ -40,10 +46,11 @@ export default function App() {
   const [state, dispatch] = useReducer(gameReducer, undefined, () =>
     createInitialState(20261125),
   )
-  const revivedRef = useRef(false)
+  const adRequest = useRef<AbortController | null>(null)
   const prevPhase = useRef(state.phase)
   const prevTruths = useRef(0)
   const lastTickSec = useRef<number | null>(null)
+  const turnClock = useRef({ stage: -1, round: -1, remainingMs: 0 })
   const ritualKey = useRef(0)
   const dialogueTimer = useRef<number | null>(null)
 
@@ -55,6 +62,10 @@ export default function App() {
   const [timerSec, setTimerSec] = useState<number | null>(null)
   const [muted, setMuted] = useState(isMuted)
   const [reaction, setReaction] = useState<{ bossId: string; line: string } | null>(null)
+  const [adBusy, setAdBusy] = useState(false)
+  const [adStatus, setAdStatus] = useState<'loading' | 'simulation' | 'showing'>('loading')
+  const [adError, setAdError] = useState<string | null>(null)
+  const [exitDialog, setExitDialog] = useState(false)
 
   const boss = getBoss(Math.min(state.stageIndex, 2))
   const breakdown = calculateDamage(toDamageInput(state))
@@ -63,7 +74,49 @@ export default function App() {
 
   useEffect(() => {
     void unlockAudio()
+    if (!IS_ONESTORE) void preloadRewardedAd()
+    return () => { adRequest.current?.abort() }
   }, [])
+
+  useEffect(() => {
+    if (Capacitor.getPlatform() !== 'android') return
+    const listener = CapacitorApp.addListener('backButton', () => setExitDialog(true))
+      .catch((error: unknown) => { log('warn', 'back button listener failed', error); return null })
+    return () => {
+      void listener.then((handle) => handle?.remove())
+    }
+  }, [])
+
+  const reviveWithAd = async () => {
+    if (adRequest.current || state.phase !== 'GAME_OVER' || state.hasUsedRevive) return
+    if (IS_ONESTORE) {
+      dispatch({ type: 'REVIVE_AD' })
+      void playCandleLit()
+      return
+    }
+    const controller = new AbortController()
+    adRequest.current = controller
+    setAdError(null)
+    setAdBusy(true)
+    let rewarded = false
+    try {
+      const result = await showRewardedAd({
+        signal: controller.signal,
+        onStatus: setAdStatus,
+        onReward: () => {
+          if (controller.signal.aborted || rewarded) return
+          rewarded = true
+          dispatch({ type: 'REVIVE_AD' })
+        },
+      })
+      if (controller.signal.aborted) return
+      if (result === 'rewarded' && rewarded) void playCandleLit()
+      else if (result === 'failed') setAdError('광고를 불러오지 못했어요. 다시 시도해 주세요.')
+    } finally {
+      if (adRequest.current === controller) adRequest.current = null
+      if (!controller.signal.aborted) setAdBusy(false)
+    }
+  }
 
   useEffect(() => {
     if (!state.resolve) return
@@ -81,21 +134,23 @@ export default function App() {
   const bossLine = getBossLine(boss, state.bossHp, state.candles, reaction?.bossId === boss.id ? reaction.line : null)
 
   useEffect(() => {
-    const shouldRun =
-      playing && Boolean(boss.turnTimerSec) && state.turn.timerStarted
-    if (!shouldRun) {
-      setTimerSec(boss.turnTimerSec && playing ? boss.turnTimerSec : null)
+    const limit = boss.turnTimerSec
+    if (!playing || !limit) {
+      if (state.phase === 'TITLE' || state.phase === 'STAGE_INTRO') turnClock.current.stage = -1
+      setTimerSec(null)
       lastTickSec.current = null
       return
     }
-    const limit = boss.turnTimerSec!
-    setTimerSec(limit)
+    if (turnClock.current.stage !== state.stageIndex || turnClock.current.round !== state.round) {
+      turnClock.current = { stage: state.stageIndex, round: state.round, remainingMs: limit * 1000 }
+      lastTickSec.current = null
+    }
+    const remaining = turnClock.current.remainingMs
+    setTimerSec(Math.ceil(remaining / 1000))
+    if (!state.turn.timerStarted || exitDialog || adBusy) return
     const startedAt = Date.now()
     const tick = window.setInterval(() => {
-      const left = Math.max(
-        0,
-        limit - Math.floor((Date.now() - startedAt) / 1000),
-      )
+      const left = Math.ceil(Math.max(0, remaining - (Date.now() - startedAt)) / 1000)
       setTimerSec(left)
       if (left <= 4 && left > 0 && lastTickSec.current !== left) {
         lastTickSec.current = left
@@ -107,8 +162,11 @@ export default function App() {
         dispatch({ type: 'TIMER_EXPIRED' })
       }
     }, 200)
-    return () => window.clearInterval(tick)
-  }, [playing, boss.turnTimerSec, state.round, state.turn.timerStarted])
+    return () => {
+      window.clearInterval(tick)
+      turnClock.current.remainingMs = Math.max(0, remaining - (Date.now() - startedAt))
+    }
+  }, [playing, boss.turnTimerSec, state.phase, state.stageIndex, state.round, state.turn.timerStarted, exitDialog, adBusy])
 
   useEffect(() => {
     if (!resolving || !state.resolve) return
@@ -186,7 +244,7 @@ export default function App() {
     breakdown.comboMultiplier *
     breakdown.ritualMultiplier *
     breakdown.relicMultiplier
-  const inputLocked = !playing
+  const inputLocked = !playing || adBusy || exitDialog
   const showHud =
     state.phase === 'PLAYER_TURN' ||
     state.phase === 'RESOLVING' ||
@@ -200,7 +258,7 @@ export default function App() {
         bossId={boss.id}
         expectedDamage={playing ? breakdown.finalDamage : state.lastDamage}
         multiplier={playing ? displayMult : Math.max(1, displayMult)}
-        interactive={playing}
+        interactive={playing && !adBusy && !exitDialog}
         hit={hitFx}
         nod={nodFx}
         saltActive={state.turn.saltCircleActive}
@@ -219,6 +277,7 @@ export default function App() {
 
       <button type="button" aria-label={muted ? '소리 켜기' : '음소거'} aria-pressed={muted}
         onClick={() => { setMuted(toggleMute()); void unlockAudio() }}
+        style={{ top: 'calc(0.25rem + env(safe-area-inset-top))', right: 'calc(1rem + env(safe-area-inset-right))' }}
         className="absolute right-4 top-1 z-50 rounded-sm bg-black/60 p-2 text-brass">
         {muted ? <VolumeX size={20} /> : <Volume2 size={20} />}
       </button>
@@ -277,20 +336,38 @@ export default function App() {
         }}
         onStart={() => {
           void unlockAudio()
-          revivedRef.current = false
           dispatch({ type: 'START_RUN' })
         }}
         onConfirmIntro={() => dispatch({ type: 'CONFIRM_INTRO' })}
         onRetry={() => {
-          revivedRef.current = false
           dispatch({ type: 'BACK_TO_TITLE' })
         }}
-        onRevive={() => {
-          if (revivedRef.current) return
-          revivedRef.current = true
-          dispatch({ type: 'REVIVE_AD' })
-        }}
+        onRevive={() => { void unlockAudio(); void reviveWithAd() }}
+        hasUsedRevive={state.hasUsedRevive}
+        adBusy={adBusy}
+        adError={adError}
+        freeRevive={IS_ONESTORE}
       />
+
+      {adBusy && (
+        <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/80 px-6" role="status" aria-live="polite">
+          <p className="rounded-sm border border-brass/40 bg-desk-lift px-6 py-5 text-center text-sm text-brass">
+            {adStatus === 'simulation' ? '광고 테스트 시뮬레이션 중...' : adStatus === 'showing' ? '광고 시청 중...' : '광고를 불러오는 중...'}
+          </p>
+        </div>
+      )}
+
+      {exitDialog && (
+        <div className="absolute inset-0 z-[70] flex items-center justify-center bg-black/85 px-6" role="dialog" aria-modal="true" aria-labelledby="exit-title">
+          <div className="w-full max-w-sm rounded-sm border border-brass/40 bg-desk-lift p-5 text-center">
+            <p id="exit-title" className="text-sm text-ink">0시의 소환실을 나가시겠습니까?</p>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <button type="button" onClick={() => setExitDialog(false)} className="rounded-sm border border-brass/40 py-3 text-sm text-ink">계속하기</button>
+              <button type="button" onClick={() => { void CapacitorApp.exitApp() }} className="rounded-sm border border-curse/60 py-3 text-sm text-curse-glow">나가기</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {state.phase === 'REWARD' && state.reward && (
         <RewardModal

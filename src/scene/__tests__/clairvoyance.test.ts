@@ -33,4 +33,26 @@ describe('투시의 은화', () => {
       expect(card.peekPhase).toBe('none')
     }
   })
+
+  it('덮인 선택 패만 떠오르고 테두리가 빛나며 제거된 패에는 재가 생긴다', () => {
+    const rig = createCards()
+    const board: BoardCard[] = [
+      { id: 'one', face: 'curse', peeked: false, revealed: false, fakeHint: false, removed: false },
+      { id: 'two', face: 'truth', peeked: false, revealed: false, fakeHint: false, removed: false },
+    ]
+    rig.syncBoard(board)
+    for (let i = 0; i < 20; i += 1) rig.update(i / 60, 'one')
+    expect(rig.cards[0]!.group.position.y).toBeGreaterThan(rig.cards[1]!.group.position.y)
+    expect(rig.cards[0]!.highlightMaterial.emissiveIntensity).toBeGreaterThan(1)
+    expect(rig.cards[1]!.highlightMaterial.emissiveIntensity).toBe(0)
+    rig.syncBoard([{ ...board[0]!, removed: true }, board[1]!])
+    const particles = rig.group.children.filter((item) => item instanceof THREE.Points)
+    expect(particles).toHaveLength(1)
+    rig.syncBoard([{ ...board[0]!, id: 'new-round' }, board[1]!])
+    expect(rig.cards[0]!.vanishing).toBe(false)
+    expect(rig.cards[0]!.group.visible).toBe(true)
+    rig.update(1, null)
+    rig.update(2, null)
+    expect(rig.group.children.filter((item) => item instanceof THREE.Points)).toHaveLength(0)
+  })
 })

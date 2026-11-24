@@ -2,6 +2,7 @@ import { log } from './logger'
 
 let ctx: AudioContext | null = null
 let muted = false
+let adPaused = false
 let master: GainNode | null = null
 let music: ReturnType<typeof createMusicEngine> | null = null
 const curseShatter = typeof Audio === 'undefined' ? null : new Audio('/sfx/curse_shatter.m4a')
@@ -9,6 +10,12 @@ if (curseShatter) {
   curseShatter.preload = 'auto'
   curseShatter.volume = 0.7
   curseShatter.load()
+}
+const bossDefeat = typeof Audio === 'undefined' ? null : new Audio('/sfx/stage_clear_mysterious.mp3')
+if (bossDefeat) {
+  bossDefeat.preload = 'auto'
+  bossDefeat.volume = 0.7
+  bossDefeat.load()
 }
 
 const MUSIC_STEP = 60 / 50 / 2
@@ -163,12 +170,12 @@ function createMusicEngine(audio: AudioContext, output: GainNode) {
 function handleMusicVisibility() {
   if (typeof document === 'undefined') return
   if (document.hidden) music?.pause()
-  else if (ctx && music) {
+  else if (ctx && music && !adPaused) {
     const audio = ctx
     const engine = music
     if (audio.state === 'suspended') {
       void audio.resume().then(() => {
-        if (!document.hidden && ctx === audio && music === engine) engine.start()
+        if (!document.hidden && !adPaused && ctx === audio && music === engine) engine.start()
       }).catch((err) => log('warn', 'music resume failed', err))
     } else {
       engine.start()
@@ -197,7 +204,7 @@ function startDrone(audio: AudioContext): void {
  * AudioContext를 지연 생성하고, 브라우저 정책에 맞게 resume한다.
  */
 async function ensureCtx(): Promise<AudioContext | null> {
-  if (muted || typeof window === 'undefined') return null
+  if (muted || adPaused || typeof window === 'undefined') return null
   try {
     if (!ctx) {
       const Ctx =
@@ -215,7 +222,8 @@ async function ensureCtx(): Promise<AudioContext | null> {
     if (ctx.state === 'suspended') {
       await ctx.resume()
     }
-    if (!muted) music?.start()
+    if (muted || adPaused) return null
+    music?.start()
     return ctx
   } catch (err) {
     log('warn', 'AudioContext init failed', err)
@@ -242,8 +250,11 @@ function envGain(
  */
 export function toggleMute(): boolean {
   muted = !muted
-  if (master) master.gain.value = muted ? 0 : 1
-  if (muted) curseShatter?.pause()
+  if (master) master.gain.value = muted || adPaused ? 0 : 1
+  if (muted) {
+    curseShatter?.pause()
+    bossDefeat?.pause()
+  }
   if (!muted && ctx?.state === 'suspended') void ctx.resume().catch((err) => log('warn', 'resume failed', err))
   return muted
 }
@@ -253,6 +264,35 @@ export function toggleMute(): boolean {
  */
 export function isMuted(): boolean {
   return muted
+}
+
+/** 광고 중 게임 소리를 멈추되 사용자의 음소거 설정은 유지한다. */
+export function setAdAudioPaused(paused: boolean): void {
+  adPaused = paused
+  if (master) master.gain.value = muted || paused ? 0 : 1
+  if (paused) {
+    music?.pause()
+    curseShatter?.pause()
+    bossDefeat?.pause()
+  } else if (!muted && (typeof document === 'undefined' || !document.hidden)) {
+    music?.start()
+  }
+}
+
+/** 촛불이 다시 붙을 때 짧은 불꽃과 밝아지는 울림. */
+export async function playCandleLit(): Promise<void> {
+  const audio = await ensureCtx()
+  if (!audio) return
+  const t = audio.currentTime
+  const osc = audio.createOscillator()
+  osc.type = 'sine'
+  osc.frequency.setValueAtTime(220, t)
+  osc.frequency.exponentialRampToValueAtTime(440, t + 0.2)
+  const gain = envGain(audio, t, 0.08, 0.03, 0.4)
+  osc.connect(gain)
+  gain.connect(master!)
+  osc.start(t)
+  osc.stop(t + 0.45)
 }
 
 /**
@@ -409,20 +449,14 @@ export async function playTimerTick(): Promise<void> {
   osc.stop(t + 0.16)
 }
 
-/** 보스 처치 시 울리는 낮고 긴 종소리. */
+/** 보스 처치 효과음. */
 export async function playBossDefeat(): Promise<void> {
-  const audio = await ensureCtx()
-  if (!audio) return
-  const t = audio.currentTime
-  for (const [frequency, volume] of [[82, 0.2], [164.8, 0.07], [247, 0.035]]) {
-    const osc = audio.createOscillator()
-    osc.type = 'sine'
-    osc.frequency.value = frequency!
-    const gain = envGain(audio, t, volume!, 0.01, 1.8)
-    osc.connect(gain)
-    gain.connect(master!)
-    osc.start(t)
-    osc.stop(t + 1.9)
+  if (muted || adPaused || !bossDefeat) return
+  try {
+    bossDefeat.currentTime = 0
+    await bossDefeat.play()
+  } catch (err) {
+    log('warn', 'boss defeat playback failed', err)
   }
 }
 

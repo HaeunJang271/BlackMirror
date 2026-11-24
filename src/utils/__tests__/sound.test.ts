@@ -14,6 +14,7 @@ describe('sound helpers', () => {
   let fakeDocument: { hidden: boolean; addEventListener: ReturnType<typeof vi.fn> }
   let audioClock: { currentTime: number }
   let shatterAudio: { src: string; preload: string; volume: number; currentTime: number; play: ReturnType<typeof vi.fn>; pause: ReturnType<typeof vi.fn>; load: ReturnType<typeof vi.fn> }
+  let defeatAudio: typeof shatterAudio
 
   beforeEach(() => {
     vi.resetModules()
@@ -94,7 +95,11 @@ describe('sound helpers', () => {
       play = vi.fn(async () => undefined)
       pause = vi.fn()
       load = vi.fn()
-      constructor(src: string) { this.src = src; shatterAudio = this }
+      constructor(src: string) {
+        this.src = src
+        if (src.includes('curse_shatter')) shatterAudio = this
+        else defeatAudio = this
+      }
     }
 
     vi.stubGlobal('window', {
@@ -133,6 +138,19 @@ describe('sound helpers', () => {
     expect(master.gain.value).toBe(0)
     toggleMute()
     expect(master.gain.value).toBe(1)
+  })
+
+  it('광고가 끝나도 기존 음소거 상태를 유지한다', async () => {
+    const { unlockAudio, toggleMute, setAdAudioPaused } = await import('../sound')
+    await unlockAudio()
+    const master = createGain.mock.results[0]!.value
+    setAdAudioPaused(true)
+    expect(master.gain.value).toBe(0)
+    expect(vi.getTimerCount()).toBe(0)
+    toggleMute()
+    setAdAudioPaused(false)
+    expect(master.gain.value).toBe(0)
+    expect(vi.getTimerCount()).toBe(0)
   })
 
   it('한 번만 재생을 시작하고 숨겨지면 중지, 돌아오면 재개한다', async () => {
@@ -207,5 +225,23 @@ describe('sound helpers', () => {
     await playCurseShatter()
     expect(shatterAudio.pause).toHaveBeenCalledOnce()
     expect(shatterAudio.play).toHaveBeenCalledTimes(2)
+  })
+
+  it('보스 처치 시 파일을 처음부터 재생하고 음소거 및 광고 일시정지를 따른다', async () => {
+    const { playBossDefeat, toggleMute, setAdAudioPaused } = await import('../sound')
+    expect(defeatAudio.src).toBe('/sfx/stage_clear_mysterious.mp3')
+    expect(defeatAudio.preload).toBe('auto')
+    defeatAudio.currentTime = 4
+    await playBossDefeat()
+    expect(defeatAudio.currentTime).toBe(0)
+    expect(defeatAudio.play).toHaveBeenCalledOnce()
+    toggleMute()
+    expect(defeatAudio.pause).toHaveBeenCalledOnce()
+    await playBossDefeat()
+    expect(defeatAudio.play).toHaveBeenCalledOnce()
+    toggleMute()
+    setAdAudioPaused(true)
+    await playBossDefeat()
+    expect(defeatAudio.play).toHaveBeenCalledOnce()
   })
 })

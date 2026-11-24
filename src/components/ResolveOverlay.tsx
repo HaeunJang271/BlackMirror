@@ -18,7 +18,7 @@ export function ResolveOverlay({ info }: ResolveOverlayProps) {
           className="absolute inset-0"
           initial={{ opacity: 0 }}
           animate={{ opacity: [0, 1, 0.85, 0] }}
-          transition={{ duration: info.durationMs / 1000, times: [0, 0.15, 0.55, 1] }}
+          transition={{ duration: 0.45, times: [0, 0.15, 0.55, 1] }}
           style={{
             boxShadow: 'inset 0 0 90px rgba(139,30,30,0.9)',
             background:
@@ -29,9 +29,9 @@ export function ResolveOverlay({ info }: ResolveOverlayProps) {
 
       {isHit ? (
         <motion.p
-          className="font-[family-name:var(--font-display)] text-5xl brass-text tabular-nums"
-          initial={{ opacity: 0, scale: 0.7, y: 12 }}
-          animate={{ opacity: [0, 1, 1, 0], scale: [0.7, 1.08, 1, 0.96], y: [12, 0, 0, -8] }}
+          className="absolute left-1/2 top-[24%] font-[family-name:var(--font-display)] text-5xl brass-text tabular-nums"
+          initial={{ opacity: 0, scale: 0.7, x: '-50%', y: 20 }}
+          animate={{ opacity: [0, 1, 1, 0], scale: [0.7, 1.12, 1, 0.96], y: [20, 0, -25, -60] }}
           transition={{ duration: info.durationMs / 1000 }}
         >
           −{info.damage}

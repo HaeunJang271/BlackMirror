@@ -73,6 +73,7 @@ export class SceneController {
   private raf = 0
   private disposed = false
   private hitPulse = false
+  private hitShakeUntil = 0
   private nodPulse = false
   private currentBossId: BossId | null = null
   private tintLights: THREE.Light[] = []
@@ -145,8 +146,8 @@ export class SceneController {
       const nx = ((clientX - rect.left) / rect.width) * 2 - 1
       const ny = -((clientY - rect.top) / rect.height) * 2 + 1
       this.pointer.set(nx, ny)
-      this.targetParallax.x = nx * 0.04
-      this.targetParallax.y = ny * 0.03
+      this.targetParallax.x = nx * 0.08
+      this.targetParallax.y = ny * 0.08
       this.pickHover()
     }
     canvas.addEventListener('pointermove', (e) => onMove(e.clientX, e.clientY))
@@ -155,6 +156,10 @@ export class SceneController {
       if (!this.interactive || !this.onCardClick) return
       this.pickHover()
       if (this.hoveredId) this.onCardClick(this.hoveredId)
+    })
+    canvas.addEventListener('pointerleave', () => {
+      this.hoveredId = null
+      this.targetParallax = { x: 0, y: 0 }
     })
     window.addEventListener('resize', this.resize)
   }
@@ -204,12 +209,14 @@ export class SceneController {
       0.06,
     )
 
-    const shake = this.hitPulse ? Math.sin(t * 40) * 0.012 : 0
+    if (this.hitPulse) this.hitShakeUntil = t + 0.35
+    const impact = Math.max(0, (this.hitShakeUntil - t) / 0.35)
+    const shake = Math.sin(t * 48) * 0.022 * impact
     const f = this.framing
     this.camera.position.set(
       f.pos.x + this.parallax.x + shake,
       f.pos.y + this.parallax.y * 0.35,
-      f.pos.z,
+      f.pos.z - 0.08 * impact,
     )
     this.camera.lookAt(
       f.look.x + this.parallax.x * 0.45,
@@ -217,7 +224,7 @@ export class SceneController {
       f.look.z,
     )
 
-    this.boss.update(t, { hit: this.hitPulse, nod: this.nodPulse })
+    this.boss.update(t, { hit: this.hitPulse, nod: this.nodPulse, lastCandle: this.lastCandles === 1 })
     this.hitPulse = false
     this.nodPulse = false
     this.candles.update(t)
@@ -297,9 +304,9 @@ export class SceneController {
     )
     if (state.ritualCue) this.ritualFx.trigger(state.ritualCue)
 
-    if (state.hit) {
+    if (state.hit && !this.lastHitPulse) {
       this.hitPulse = true
-      if (!this.lastHitPulse) this.scale.slam()
+      this.scale.slam()
     }
     this.lastHitPulse = state.hit
     if (state.nod) this.nodPulse = true

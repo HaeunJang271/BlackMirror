@@ -57,7 +57,8 @@ export function GameHud({
   return (
     <div className="pointer-events-none absolute inset-0 z-10 flex flex-col">
       {/* 오른쪽 컬럼: 보스스탯 → 스킬설명 → 스킬창 */}
-      <div className="ml-auto flex h-full w-full max-w-[36.4rem] flex-col px-4 pb-3 pt-10">
+      <div className="ml-auto flex h-full w-full max-w-[36.4rem] flex-col px-4 pb-3 pt-10"
+        style={{ paddingTop: 'max(2.5rem, env(safe-area-inset-top))', paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))', paddingRight: 'max(1rem, env(safe-area-inset-right))' }}>
         {/* 보스 스탯 */}
         <div className="w-full max-w-[31.2rem] shrink-0 self-end rounded-sm border border-brass/25 bg-black/45 px-4 py-2.5 backdrop-blur-[2px]">
           <div className="flex items-start justify-between gap-2">

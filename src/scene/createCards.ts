@@ -12,6 +12,8 @@ export interface CardMesh {
   group: THREE.Group
   flipRoot: THREE.Group
   mesh: THREE.Mesh
+  highlight: THREE.Group
+  highlightMaterial: THREE.MeshStandardMaterial
   basePos: THREE.Vector3
   targetY: number
   flipProgress: number
@@ -85,6 +87,9 @@ export function createCards(): CardsRig {
   })
 
   const cards: CardMesh[] = []
+  const embers: { points: THREE.Points; velocities: Float32Array; started: number | null; updated: number | null }[] = []
+  const longEdge = new THREE.BoxGeometry(0.3, 0.002, 0.006)
+  const shortEdge = new THREE.BoxGeometry(0.006, 0.002, 0.42)
 
   for (let i = 0; i < 5; i += 1) {
     const mats: THREE.Material[] = [edge, edge, edge, edge, backMat, backMat]
@@ -96,6 +101,22 @@ export function createCards(): CardsRig {
 
     const flipRoot = new THREE.Group()
     flipRoot.add(mesh)
+    const highlight = new THREE.Group()
+    const highlightMaterial = new THREE.MeshStandardMaterial({
+      color: 0x7a5b27, emissive: 0xe8a856, emissiveIntensity: 0,
+    })
+    for (const z of [-0.21, 0.21]) {
+      const edgeMesh = new THREE.Mesh(longEdge, highlightMaterial)
+      edgeMesh.position.z = z
+      highlight.add(edgeMesh)
+    }
+    for (const x of [-0.15, 0.15]) {
+      const edgeMesh = new THREE.Mesh(shortEdge, highlightMaterial)
+      edgeMesh.position.x = x
+      highlight.add(edgeMesh)
+    }
+    highlight.position.y = 0.016
+    flipRoot.add(highlight)
 
     const cardGroup = new THREE.Group()
     const x = DESKTOP_FAN[i]!
@@ -109,6 +130,8 @@ export function createCards(): CardsRig {
       group: cardGroup,
       flipRoot,
       mesh,
+      highlight,
+      highlightMaterial,
       basePos: cardGroup.position.clone(),
       targetY: REST_Y,
       flipProgress: 0,
@@ -165,6 +188,29 @@ export function createCards(): CardsRig {
     return g
   }
 
+  function releaseEmbers(card: CardMesh) {
+    const count = 32
+    const positions = new Float32Array(count * 3)
+    const velocities = new Float32Array(count * 3)
+    for (let i = 0; i < count; i += 1) {
+      positions[i * 3] = (Math.random() - 0.5) * 0.26
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 0.36
+      velocities[i * 3] = (Math.random() - 0.5) * 0.35
+      velocities[i * 3 + 1] = 0.3 + Math.random() * 0.6
+      velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.35
+    }
+    const geometry = new THREE.BufferGeometry()
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+    const material = new THREE.PointsMaterial({
+      color: 0xe7461d, size: 0.035, transparent: true, opacity: 0.95,
+      depthWrite: false, blending: THREE.AdditiveBlending,
+    })
+    const points = new THREE.Points(geometry, material)
+    points.position.copy(card.group.position)
+    group.add(points)
+    embers.push({ points, velocities, started: null, updated: null })
+  }
+
   return {
     group,
     cards,
@@ -197,12 +243,18 @@ export function createCards(): CardsRig {
         if (card.id !== data.id) {
           card.peekPhase = 'none'
           card.peekT = 0
+          card.vanishing = false
+          card.vanishT = 0
+          card.removed = false
+          card.group.rotation.z = 0
+          card.group.scale.setScalar(1)
         }
         card.id = data.id
         card.mesh.userData.cardId = data.id
         applyFace(card, data.face)
 
         if (data.removed && !card.removed && !card.vanishing) {
+          releaseEmbers(card)
           card.vanishing = true
           card.vanishT = 0
           card.removed = true
@@ -241,8 +293,36 @@ export function createCards(): CardsRig {
       if (!card) return
       card.flashT = 0.6
     },
-    update(_t, hoveredId) {
+    update(t, hoveredId) {
+      for (let i = embers.length - 1; i >= 0; i -= 1) {
+        const ember = embers[i]!
+        if (ember.started === null) ember.started = t
+        const dt = ember.updated === null ? 0 : Math.min(0.05, Math.max(0, t - ember.updated))
+        ember.updated = t
+        const age = Math.max(0, t - ember.started)
+        const positions = ember.points.geometry.getAttribute('position') as THREE.BufferAttribute
+        for (let j = 0; j < positions.count; j += 1) {
+          positions.setXYZ(j,
+            positions.getX(j) + ember.velocities[j * 3]! * dt,
+            positions.getY(j) + ember.velocities[j * 3 + 1]! * dt,
+            positions.getZ(j) + ember.velocities[j * 3 + 2]! * dt,
+          )
+        }
+        positions.needsUpdate = true
+        ;(ember.points.material as THREE.PointsMaterial).opacity = Math.max(0, 0.95 * (1 - age / 0.9))
+        if (age >= 0.9) {
+          group.remove(ember.points)
+          ember.points.geometry.dispose()
+          ;(ember.points.material as THREE.PointsMaterial).dispose()
+          embers.splice(i, 1)
+        }
+      }
       cards.forEach((card) => {
+        const hovered = hoveredId === card.id && !card.revealed && !card.removed && card.peekPhase === 'none'
+        card.highlight.visible = !card.revealed && !card.removed
+        card.highlightMaterial.emissiveIntensity = THREE.MathUtils.lerp(
+          card.highlightMaterial.emissiveIntensity, hovered ? 1.4 : 0, 0.2,
+        )
         if (card.vanishing) {
           card.vanishT += 0.028
           const p = Math.min(1, card.vanishT)
@@ -266,8 +346,7 @@ export function createCards(): CardsRig {
           card.flipProgress = Math.min(1, card.flipProgress + 0.045)
           applyFlipPose(card, card.flipProgress)
         } else if (!card.revealed) {
-          const hover = hoveredId === card.id
-          card.targetY = hover ? 0.1 : REST_Y
+          card.targetY = hovered ? REST_Y + 0.04 : REST_Y
           card.group.position.y = THREE.MathUtils.lerp(
             card.group.position.y,
             card.targetY,
