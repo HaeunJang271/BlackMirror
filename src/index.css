@@ -28,6 +28,7 @@
     height: 100%;
     margin: 0;
     overflow: hidden;
+    overscroll-behavior: none;
     background: var(--color-desk);
     color: var(--color-ink);
     font-family: var(--font-body);

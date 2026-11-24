@@ -39,7 +39,7 @@ const DESKTOP: CameraFraming = {
 
 const MOBILE: CameraFraming = {
   fov: 62,
-  pos: new THREE.Vector3(0, 1.95, 2.95),
+  pos: new THREE.Vector3(0, 1.87, 3.15),
   look: new THREE.Vector3(0, 0.55, -0.2),
 }
 
@@ -90,7 +90,7 @@ export class SceneController {
       powerPreference: 'high-performance',
     })
     // PS1 로우레즈
-    this.renderer.setPixelRatio(0.55)
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     this.renderer.setClearColor(0x0a0807, 1)
     this.renderer.outputColorSpace = THREE.SRGBColorSpace
     canvas.style.imageRendering = 'pixelated'
@@ -171,11 +171,12 @@ export class SceneController {
     }
     this.raycaster.setFromCamera(this.pointer, this.camera)
     const hits = this.raycaster.intersectObjects(this.cards.getPickables(), false)
-    this.hoveredId = (hits[0]?.object.userData.cardId as string) ?? null
+    const directHit = hits.find((hit) => hit.object.userData.cardSurface)
+    this.hoveredId = ((directHit ?? hits[0])?.object.userData.cardId as string) ?? null
   }
 
   private applyFraming(aspect: number) {
-    const mobile = aspect < 0.75
+    const mobile = aspect < 0.8
     this.framing = mobile ? MOBILE : DESKTOP
     this.camera.fov = this.framing.fov
     this.camera.updateProjectionMatrix()

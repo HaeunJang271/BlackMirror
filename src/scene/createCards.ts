@@ -12,6 +12,7 @@ export interface CardMesh {
   group: THREE.Group
   flipRoot: THREE.Group
   mesh: THREE.Mesh
+  hitbox: THREE.Mesh
   highlight: THREE.Group
   highlightMaterial: THREE.MeshStandardMaterial
   basePos: THREE.Vector3
@@ -99,8 +100,13 @@ export function createCards(): CardsRig {
     // Z 180°: 앞면 문양·글자가 보스 쪽이 아닌 플레이어 쪽으로 똑바로
     mesh.rotation.set(-Math.PI / 2, 0, Math.PI)
 
+    const hitbox = new THREE.Mesh(
+      new THREE.BoxGeometry(0.36, 0.504, 0.034),
+      new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false }),
+    )
+    hitbox.rotation.copy(mesh.rotation)
     const flipRoot = new THREE.Group()
-    flipRoot.add(mesh)
+    flipRoot.add(mesh, hitbox)
     const highlight = new THREE.Group()
     const highlightMaterial = new THREE.MeshStandardMaterial({
       color: 0x7a5b27, emissive: 0xe8a856, emissiveIntensity: 0,
@@ -130,6 +136,7 @@ export function createCards(): CardsRig {
       group: cardGroup,
       flipRoot,
       mesh,
+      hitbox,
       highlight,
       highlightMaterial,
       basePos: cardGroup.position.clone(),
@@ -250,7 +257,9 @@ export function createCards(): CardsRig {
           card.group.scale.setScalar(1)
         }
         card.id = data.id
+        card.mesh.userData.cardSurface = true
         card.mesh.userData.cardId = data.id
+        card.hitbox.userData.cardId = data.id
         applyFace(card, data.face)
 
         if (data.removed && !card.removed && !card.vanishing) {
@@ -382,7 +391,7 @@ export function createCards(): CardsRig {
         .filter(
           (c) => c.group.visible && !c.removed && !c.revealed && !c.vanishing,
         )
-        .map((c) => c.mesh)
+        .flatMap((c) => [c.mesh, c.hitbox])
     },
   }
 }

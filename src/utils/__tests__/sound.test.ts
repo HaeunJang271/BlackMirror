@@ -84,6 +84,7 @@ describe('sound helpers', () => {
       createBuffer = createBuffer
       createBufferSource = createBufferSource
       createDelay = createDelay
+      createMediaElementSource = vi.fn(() => ({ connect: vi.fn() }))
       constructor() { audioClock = this }
     }
 
@@ -137,7 +138,7 @@ describe('sound helpers', () => {
     toggleMute()
     expect(master.gain.value).toBe(0)
     toggleMute()
-    expect(master.gain.value).toBe(1)
+    expect(master.gain.value).toBe(10)
   })
 
   it('광고가 끝나도 기존 음소거 상태를 유지한다', async () => {

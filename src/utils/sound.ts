@@ -3,6 +3,7 @@ import { log } from './logger'
 let ctx: AudioContext | null = null
 let muted = false
 let adPaused = false
+const MASTER_VOLUME = 10
 let master: GainNode | null = null
 let music: ReturnType<typeof createMusicEngine> | null = null
 const curseShatter = typeof Audio === 'undefined' ? null : new Audio('/sfx/curse_shatter.m4a')
@@ -213,8 +214,10 @@ async function ensureCtx(): Promise<AudioContext | null> {
           .webkitAudioContext
       ctx = new Ctx()
       master = ctx.createGain()
-      master.gain.value = muted ? 0 : 1
+      master.gain.value = muted ? 0 : MASTER_VOLUME
       master.connect(ctx.destination)
+      if (curseShatter) ctx.createMediaElementSource(curseShatter).connect(master)
+      if (bossDefeat) ctx.createMediaElementSource(bossDefeat).connect(master)
       startDrone(ctx)
       music = createMusicEngine(ctx, master)
       if (typeof document !== 'undefined') document.addEventListener('visibilitychange', handleMusicVisibility)
@@ -250,7 +253,7 @@ function envGain(
  */
 export function toggleMute(): boolean {
   muted = !muted
-  if (master) master.gain.value = muted || adPaused ? 0 : 1
+  if (master) master.gain.value = muted || adPaused ? 0 : MASTER_VOLUME
   if (muted) {
     curseShatter?.pause()
     bossDefeat?.pause()
@@ -269,7 +272,7 @@ export function isMuted(): boolean {
 /** 광고 중 게임 소리를 멈추되 사용자의 음소거 설정은 유지한다. */
 export function setAdAudioPaused(paused: boolean): void {
   adPaused = paused
-  if (master) master.gain.value = muted || paused ? 0 : 1
+  if (master) master.gain.value = muted || paused ? 0 : MASTER_VOLUME
   if (paused) {
     music?.pause()
     curseShatter?.pause()
@@ -422,7 +425,7 @@ export async function playCurseHit(): Promise<void> {
 
 /** 도자기가 깨지고 조각들이 흩어지는 소리. */
 export async function playCurseShatter(): Promise<void> {
-  if (isMuted() || !curseShatter) return
+  if (!curseShatter || !(await ensureCtx()) || muted || adPaused) return
   try {
     curseShatter.currentTime = 0
     await curseShatter.play()
@@ -451,7 +454,7 @@ export async function playTimerTick(): Promise<void> {
 
 /** 보스 처치 효과음. */
 export async function playBossDefeat(): Promise<void> {
-  if (muted || adPaused || !bossDefeat) return
+  if (!bossDefeat || !(await ensureCtx()) || muted || adPaused) return
   try {
     bossDefeat.currentTime = 0
     await bossDefeat.play()
