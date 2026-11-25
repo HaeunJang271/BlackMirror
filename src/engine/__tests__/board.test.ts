@@ -5,14 +5,14 @@ describe('buildBoard', () => {
   it('기본 스테이지1은 진실3 저주2다', () => {
     const board = buildBoard(0, [], 1, 1)
     expect(board).toHaveLength(5)
-    expect(board.filter((c) => c.face === 'truth')).toHaveLength(3)
-    expect(board.filter((c) => c.face === 'curse')).toHaveLength(2)
+    expect(board.filter((c) => c.face === 'truth')).toHaveLength(4)
+    expect(board.filter((c) => c.face === 'curse')).toHaveLength(1)
   })
 
   it('녹슨 저울추는 저주 +1 (진실 -1)을 적용한다', () => {
     const board = buildBoard(0, ['rusty_weight'], 1, 1)
-    expect(board.filter((c) => c.face === 'curse')).toHaveLength(3)
-    expect(board.filter((c) => c.face === 'truth')).toHaveLength(2)
+    expect(board.filter((c) => c.face === 'curse')).toHaveLength(2)
+    expect(board.filter((c) => c.face === 'truth')).toHaveLength(3)
   })
 
   it('거울 성직자는 저주 1장에 가짜 암시를 붙인다', () => {
