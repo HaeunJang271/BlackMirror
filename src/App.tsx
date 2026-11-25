@@ -63,8 +63,7 @@ export default function App() {
 
   const [opening, setOpening] = useState<number | null>(null)
   const [stageBanner, setStageBanner] = useState<number | null>(null)
-  const [tutorial, setTutorial] = useState<'first' | 'truth' | 'waiting' | 'ritual' | 'continue' | 'done'>(() => readFlag(TUTORIAL_KEY) ? 'done' : 'first')
-  const tutorialRound = useRef<number | null>(null)
+  const [tutorial, setTutorial] = useState<'first' | 'truth' | 'ritual' | 'continue' | 'done'>(() => readFlag(TUTORIAL_KEY) ? 'done' : 'first')
 
   const [hitFx, setHitFx] = useState(false)
   const [nodFx, setNodFx] = useState(false)
@@ -117,9 +116,6 @@ export default function App() {
     if (tutorial !== 'done' && state.stageIndex === 0 && state.phase === 'REWARD') {
       writeFlag(TUTORIAL_KEY)
       setTutorial('done')
-    } else if (tutorial === 'waiting' && state.stageIndex === 0 && playing && tutorialRound.current !== null && state.round > tutorialRound.current) {
-      tutorialRound.current = state.round
-      setTutorial(state.hand.length > 0 ? 'ritual' : 'continue')
     } else if (tutorial === 'ritual' && (state.stageIndex !== 0 || (state.phase !== 'PLAYER_TURN' && state.phase !== 'STAGE_INTRO'))) {
       setTutorial('continue')
     }
@@ -311,7 +307,7 @@ export default function App() {
         bossId={boss.id}
         expectedDamage={playing ? breakdown.finalDamage : state.lastDamage}
         multiplier={playing ? displayMult : Math.max(1, displayMult)}
-        interactive={playing && !adBusy && !exitDialog && stageBanner === null}
+        interactive={playing && !adBusy && !exitDialog && stageBanner === null && !(tutorial !== 'done' && state.stageIndex === 0 && state.turn.consecutiveTruths > 0)}
         hit={hitFx}
         nod={nodFx}
         saltActive={state.turn.saltCircleActive}
@@ -323,7 +319,13 @@ export default function App() {
           void unlockAudio()
           void playCardFlip()
           const next = gameReducer(state, { type: 'FLIP_CARD', cardId })
-          if (tutorial === 'first' && next !== state) setTutorial('truth')
+          if ((tutorial === 'first' || tutorial === 'truth') && next !== state) {
+            const hasUsableRitual = next.hand.some((ritualId) => {
+              const targetCardId = ritualId === 'clairvoyant_coin' ? next.board.find((card) => !card.revealed && !card.removed)?.id : undefined
+              return gameReducer(next, { type: 'USE_RITUAL', ritualId, targetCardId }) !== next
+            })
+            setTutorial(next.turn.consecutiveTruths > 0 && hasUsableRitual ? 'ritual' : 'truth')
+          }
           dispatch({ type: 'FLIP_CARD', cardId })
         }}
       />
@@ -365,10 +367,7 @@ export default function App() {
           inputLocked={inputLocked}
           onCashOut={() => {
             void unlockAudio()
-            if (tutorial === 'truth' && gameReducer(state, { type: 'CASH_OUT' }) !== state) {
-              tutorialRound.current = state.round
-              setTutorial('waiting')
-            }
+            if (tutorial === 'truth' && gameReducer(state, { type: 'CASH_OUT' }) !== state) setTutorial('continue')
             dispatch({ type: 'CASH_OUT' })
           }}
           onUseRitual={(ritualId) => {
@@ -397,7 +396,7 @@ export default function App() {
         }}
         onStart={() => {
           void unlockAudio()
-          if (tutorial !== 'done') { setTutorial('first'); tutorialRound.current = null }
+          if (tutorial !== 'done') setTutorial('first')
           if (readFlag(OPENING_KEY)) dispatch({ type: 'START_RUN' })
           else setOpening(0)
         }}

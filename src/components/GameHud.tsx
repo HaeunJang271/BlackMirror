@@ -69,7 +69,7 @@ export function GameHud({
           {tutorialHint === 'first' ? '패를 눌러 진실을 찾으세요. 저주가 나오면 촛불이 꺼집니다.'
             : tutorialHint === 'retry' ? '저주가 나왔습니다. 다시 패를 열어 진실을 찾으세요.'
             : tutorialHint === 'next' ? '패를 열고 정산해 봉인을 깨세요.'
-            : tutorialHint === 'truth' ? '더 열어 배수를 키우거나, 지금 정산해 봉인을 깎으세요.'
+            : tutorialHint === 'truth' ? '진실을 찾았습니다. 정산해 봉인을 깎으세요.'
               : '의식 아이콘을 한 번 터치하면 설명, 두 번 터치하면 사용합니다.'}
         </p>
       )}
