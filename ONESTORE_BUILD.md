@@ -10,7 +10,7 @@
 
 ## 서명 및 업로드
 
-GitHub Actions에서 서명된 AAB를 빌드하려면 저장소의 Actions secrets에 `KEYSTORE_BASE64` (키스토어 파일의 base64), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`를 등록합니다. `main`에 push하거나 **Build signed Android App Bundle**을 수동 실행하면 `onestore-release-aab` 아티팩트가 생성됩니다. 기존 앱을 업데이트할 때는 반드시 같은 서명키를 사용합니다.
+GitHub Actions에서 서명된 AAB를 빌드하려면 저장소의 Actions secrets에 `KEYSTORE_BASE64` (키스토어 파일의 base64), `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`를 등록합니다. `main`에 push하거나 **Build signed Android App Bundle**을 수동 실행하면 `onestore-release-aab` 아티팩트가 생성됩니다. 기존 앱을 업데이트할 때는 반드시 같은 서명키를 사용합니다.
 
 1. Android Studio에서 **Build → Generate Signed Bundle / APK**를 선택합니다.
 2. **Android App Bundle** 또는 **APK**를 고르고, 기존 키스토어를 선택하거나 **Create new**로 배포 키를 만듭니다. 키스토어와 비밀번호는 별도로 안전하게 보관합니다.
