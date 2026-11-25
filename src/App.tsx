@@ -322,11 +322,11 @@ export default function App() {
           void playCardFlip()
           const next = gameReducer(state, { type: 'FLIP_CARD', cardId })
           if ((tutorial === 'first' || tutorial === 'truth') && next !== state) {
-            if (next.turn.consecutiveTruths > 0) setFirstTruthLock(true)
             const hasUsableRitual = next.hand.some((ritualId) => {
               const targetCardId = ritualId === 'clairvoyant_coin' ? next.board.find((card) => !card.revealed && !card.removed)?.id : undefined
               return gameReducer(next, { type: 'USE_RITUAL', ritualId, targetCardId }) !== next
             })
+            if (next.turn.consecutiveTruths > 0 && hasUsableRitual) setFirstTruthLock(true)
             setTutorial(next.turn.consecutiveTruths > 0 && hasUsableRitual ? 'ritual' : 'truth')
           }
           dispatch({ type: 'FLIP_CARD', cardId })
@@ -380,7 +380,7 @@ export default function App() {
             const targetCardId = needsTarget ? target?.id : undefined
             const action = { type: 'USE_RITUAL' as const, ritualId, targetCardId }
             if (gameReducer(state, action) === state) return
-            if (tutorial === 'ritual') setTutorial('continue')
+            if (tutorial === 'ritual') { setFirstTruthLock(false); setTutorial('continue') }
             fireRitual(ritualId, targetCardId)
             dispatch(action)
           }}
