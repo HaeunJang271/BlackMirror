@@ -65,12 +65,12 @@ export function GameHud({
   return (
     <div className="pointer-events-none absolute inset-0 z-10 flex flex-col">
       {tutorialHint && (
-        <p role="status" className="tutorial-hint absolute left-1/2 top-[20%] w-max max-w-[90%] -translate-x-1/2 text-center">
+        <p role="status" className={`tutorial-hint absolute left-1/2 w-max max-w-[90%] -translate-x-1/2 text-center ${tutorialHint === 'ritual' ? 'top-1/2 -translate-y-1/2' : 'top-[20%]'}`}>
           {tutorialHint === 'first' ? '패를 눌러 진실을 찾으세요. 저주가 나오면 촛불이 꺼집니다.'
             : tutorialHint === 'retry' ? '저주가 나왔습니다. 다시 패를 열어 진실을 찾으세요.'
             : tutorialHint === 'next' ? '패를 열고 정산해 봉인을 깨세요.'
             : tutorialHint === 'truth' ? '더 열어 배수를 키우거나, 지금 정산해 봉인을 깎으세요.'
-              : '의식 카드를 탭해 패를 엿보거나 저주를 피할 수 있습니다.'}
+              : '의식 아이콘을 한 번 터치하면 설명, 두 번 터치하면 사용합니다.'}
         </p>
       )}
       <div className="mx-3 w-auto shrink-0 border-b border-brass/25 bg-black/70 px-3 pb-1 pt-[max(0.75rem,env(safe-area-inset-top))] sm:hidden">
