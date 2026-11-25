@@ -13,6 +13,7 @@ export function createEmptyTurn(): TurnState {
     ashBreathArmed: false,
     forbiddenHandBonus: 0,
     timerStarted: false,
+    timerBonusSec: 0,
   }
 }
 

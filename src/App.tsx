@@ -57,7 +57,7 @@ export default function App() {
   const prevPhase = useRef(state.phase)
   const prevTruths = useRef(0)
   const lastTickSec = useRef<number | null>(null)
-  const turnClock = useRef({ stage: -1, round: -1, remainingMs: 0 })
+  const turnClock = useRef({ stage: -1, round: -1, remainingMs: 0, bonusSec: 0 })
   const ritualKey = useRef(0)
   const dialogueTimer = useRef<number | null>(null)
 
@@ -78,11 +78,13 @@ export default function App() {
   const [adStatus, setAdStatus] = useState<'loading' | 'simulation' | 'showing'>('loading')
   const [adError, setAdError] = useState<string | null>(null)
   const [exitDialog, setExitDialog] = useState(false)
+  const [notice, setNotice] = useState<string | null>(null)
 
   const boss = getBoss(Math.min(state.stageIndex, 2))
   const breakdown = calculateDamage(toDamageInput(state))
   const playing = state.phase === 'PLAYER_TURN'
   const resolving = state.phase === 'RESOLVING'
+  const tutorialTimerPaused = state.stageIndex === 0 && tutorial !== 'done'
 
   const finishOpening = () => {
     writeFlag(OPENING_KEY)
@@ -186,16 +188,18 @@ export default function App() {
 
   useEffect(() => {
     const limit = boss.turnTimerSec
-    if (!playing || !limit || (tutorial !== 'done' && state.stageIndex === 0)) {
+    if (!playing || !limit || tutorialTimerPaused) {
       if (state.phase === 'TITLE' || state.phase === 'STAGE_INTRO') turnClock.current.stage = -1
       setTimerSec(null)
       lastTickSec.current = null
       return
     }
     if (turnClock.current.stage !== state.stageIndex || turnClock.current.round !== state.round) {
-      turnClock.current = { stage: state.stageIndex, round: state.round, remainingMs: limit * 1000 }
+      turnClock.current = { stage: state.stageIndex, round: state.round, remainingMs: limit * 1000, bonusSec: 0 }
       lastTickSec.current = null
     }
+    turnClock.current.remainingMs += (state.turn.timerBonusSec - turnClock.current.bonusSec) * 1000
+    turnClock.current.bonusSec = state.turn.timerBonusSec
     const remaining = turnClock.current.remainingMs
     setTimerSec(Math.ceil(remaining / 1000))
     if (!state.turn.timerStarted || exitDialog || adBusy) return
@@ -217,7 +221,13 @@ export default function App() {
       window.clearInterval(tick)
       turnClock.current.remainingMs = Math.max(0, remaining - (Date.now() - startedAt))
     }
-  }, [playing, boss.turnTimerSec, state.phase, state.stageIndex, state.round, state.turn.timerStarted, exitDialog, adBusy, tutorial])
+  }, [playing, boss.turnTimerSec, state.phase, state.stageIndex, state.round, state.turn.timerStarted, state.turn.timerBonusSec, exitDialog, adBusy, tutorialTimerPaused])
+
+  useEffect(() => {
+    if (!notice) return
+    const id = window.setTimeout(() => setNotice(null), 2400)
+    return () => window.clearTimeout(id)
+  }, [notice])
 
   useEffect(() => {
     if (!resolving || !state.resolve) return
@@ -321,6 +331,7 @@ export default function App() {
           void unlockAudio()
           void playCardFlip()
           const next = gameReducer(state, { type: 'FLIP_CARD', cardId })
+          if (!state.waxCharmUsed && next.waxCharmUsed) setNotice('촛농의 부적이 저주를 막았다.')
           if ((tutorial === 'first' || tutorial === 'truth') && next !== state) {
             const hasUsableRitual = next.hand.some((ritualId) => {
               const targetCardId = ritualId === 'clairvoyant_coin' ? next.board.find((card) => !card.revealed && !card.removed)?.id : undefined
@@ -360,7 +371,7 @@ export default function App() {
           bossHp={state.bossHp}
           stageIndex={state.stageIndex}
           board={state.board}
-          timerSec={playing && boss.turnTimerSec && !(tutorial !== 'done' && state.stageIndex === 0) ? timerSec : null}
+          timerSec={playing && boss.turnTimerSec && !tutorialTimerPaused ? timerSec : null}
           expectedDamage={playing ? breakdown.finalDamage : state.lastDamage}
           multiplier={playing ? displayMult : Math.max(1, displayMult)}
           canCashOut={playing && canCashOut(state.turn.consecutiveTruths)}
@@ -379,7 +390,11 @@ export default function App() {
             const target = state.board.find((c) => !c.revealed && !c.removed)
             const targetCardId = needsTarget ? target?.id : undefined
             const action = { type: 'USE_RITUAL' as const, ritualId, targetCardId }
-            if (gameReducer(state, action) === state) return
+            if (gameReducer(state, action) === state) {
+              if (ritualId === 'scale_flip') setNotice('바꿀 수 있는 저주 패가 없습니다.')
+              if (ritualId === 'truth_bell') setNotice('열 수 있는 진실 패가 없습니다.')
+              return
+            }
             if (tutorial === 'ritual') { setFirstTruthLock(false); setTutorial('continue') }
             fireRitual(ritualId, targetCardId)
             dispatch(action)
@@ -388,6 +403,7 @@ export default function App() {
       )}
 
       {resolving && state.resolve && <ResolveOverlay info={state.resolve} />}
+      {notice && <div role="status" className="pointer-events-none absolute inset-x-0 top-[25%] z-50 text-center text-brass">{notice}</div>}
 
       {state.phase !== 'STAGE_INTRO' && <OverlayScreens
         phase={state.phase}
@@ -453,7 +469,7 @@ export default function App() {
         <RewardModal
           offer={state.reward}
           defeatLine={boss.defeatLine}
-          refillCount={Math.min(2, MAX_HAND - state.hand.length, state.spentRituals.filter((id) => !state.hand.includes(id) && !(id === 'ash_breath' && state.ashBreathUsedThisRun)).length)}
+          refillCount={Math.max(0, Math.min(2, MAX_HAND - state.hand.length, state.spentRituals.filter((id) => !state.hand.includes(id) && !(id === 'ash_breath' && state.ashBreathUsedThisRun)).length))}
           canRelight={state.candles < MAX_CANDLES}
           onConfirm={(relicId, choice) =>
             dispatch({ type: 'SELECT_REWARD', relicId, choice })

@@ -29,4 +29,20 @@ describe('mobile ritual selection', () => {
     expect(onUseRitual).toHaveBeenCalledOnce()
     expect(onUseRitual).toHaveBeenCalledWith(id)
   })
+
+  it('shows the description on the first mouse click and uses the ritual on the second', () => {
+    const onUseRitual = vi.fn()
+    const id = 'clairvoyant_coin'
+    render(<GameHud boss={BOSSES[0]!} bossLine="" bossHp={10} stageIndex={0}
+      board={[]} timerSec={null} expectedDamage={0} multiplier={1} canCashOut={false}
+      hand={[id]} ashBreathAvailable relics={[]} inputLocked={false}
+      onCashOut={vi.fn()} onUseRitual={onUseRitual} />)
+    const button = screen.getByRole('button', { name: RITUALS[id].name })
+    fireEvent.click(button)
+    expect(screen.getByRole('status').textContent).toContain(RITUALS[id].description)
+    expect(onUseRitual).not.toHaveBeenCalled()
+    fireEvent.click(button)
+    expect(onUseRitual).toHaveBeenCalledOnce()
+    expect(onUseRitual).toHaveBeenCalledWith(id)
+  })
 })

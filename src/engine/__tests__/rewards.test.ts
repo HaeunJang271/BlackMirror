@@ -14,8 +14,8 @@ function defeated(stageIndex = 0): GameState {
 
 describe('스테이지 보상', () => {
   it('세 스테이지의 체력과 제한 시간을 적용한다', () => {
-    expect(BOSSES.map((boss) => boss.maxHp)).toEqual([60, 100, 150])
-    expect(BOSSES.map((boss) => boss.turnTimerSec)).toEqual([12, 10, 8])
+    expect(BOSSES.map((boss) => boss.maxHp)).toEqual([60, 90, 125])
+    expect(BOSSES.map((boss) => boss.turnTimerSec)).toEqual([12, 11, 10])
   })
 
   it('유물 세 개를 제안하고 의식 두 장을 보충한다', () => {
@@ -33,7 +33,7 @@ describe('스테이지 보상', () => {
 
   it('촛불 보상은 손패 대신 촛불을 되살린다', () => {
     const state = defeated()
-    const next = gameReducer(state, { type: 'SELECT_REWARD', relicId: state.reward!.relicOptions[0]!, choice: 'candle' })
+    const next = gameReducer(state, { type: 'SELECT_REWARD', relicId: state.reward!.relicOptions.find((id) => id !== 'golden_pan')!, choice: 'candle' })
     expect(next.phase).toBe('STAGE_INTRO')
     expect(next.candles).toBe(3)
     expect(next.hand).toEqual(state.hand)
@@ -60,7 +60,7 @@ describe('스테이지 보상', () => {
 
   it('소모 의식이 없거나 촛불이 가득 차도 보상 선택을 완료할 수 있다', () => {
     const state = { ...defeated(), spentRituals: [], candles: 3 }
-    const next = gameReducer(state, { type: 'SELECT_REWARD', relicId: state.reward!.relicOptions[0]!, choice: 'candle' })
+    const next = gameReducer(state, { type: 'SELECT_REWARD', relicId: state.reward!.relicOptions.find((id) => id !== 'golden_pan')!, choice: 'candle' })
     expect(next.phase).toBe('STAGE_INTRO')
     expect(next.candles).toBe(3)
     expect(next.hand).toEqual(state.hand)

@@ -2,6 +2,9 @@ import type { RelicDef, RelicId } from '../types/game'
 
 /** 유물 6종 */
 export const RELICS: Record<RelicId, RelicDef> = {
+  golden_pan: { id: 'golden_pan', name: '황금 저울판', description: '스테이지 시작 시 무작위 의식 1장 추가.' },
+  wax_charm: { id: 'wax_charm', name: '촛농의 부적', description: '매 스테이지 첫 저주 1회를 무효화한다.' },
+  chalice_of_ruin: { id: 'chalice_of_ruin', name: '파멸의 성배', description: '한 턴에 의식 2장 이상 사용 시 데미지 ×2.' },
   broken_hand: {
     id: 'broken_hand',
     name: '부러진 초침',

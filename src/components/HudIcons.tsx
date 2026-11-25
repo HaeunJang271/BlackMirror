@@ -1,5 +1,6 @@
 import {
   CircleDot,
+  Bell, Hourglass, CandlestickChart, CupSoda,
   Clock,
   Droplets,
   Eye,
@@ -23,6 +24,10 @@ export const RITUAL_ICONS: Record<RitualId, LucideIcon> = {
   swapped_card: Shuffle,
   ash_breath: Wind,
   forbidden_hand: Hand,
+  truth_bell: Bell,
+  scale_flip: Scale,
+  sand_glass: Hourglass,
+  soul_candelabra: CandlestickChart,
 }
 
 /** 유물 → 아이콘. */
@@ -33,4 +38,7 @@ export const RELIC_ICONS: Record<RelicId, LucideIcon> = {
   crow_feather: Feather,
   rusty_weight: Scale,
   ashen_seal: Hexagon,
+  golden_pan: Scale,
+  wax_charm: Flame,
+  chalice_of_ruin: CupSoda,
 }

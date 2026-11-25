@@ -32,6 +32,10 @@ export const RITUALS: Record<RitualId, RitualDef> = {
     name: '금단의 손',
     description: '연 진실 1장의 기본 점수를 한 번 더 복사.',
   },
+  truth_bell: { id: 'truth_bell', name: '진실의 종', description: '덮인 진실 패 1장을 안전하게 즉시 연다.' },
+  scale_flip: { id: 'scale_flip', name: '운명의 저울질', description: '덮인 저주 1장을 진실로 바꾼다.' },
+  sand_glass: { id: 'sand_glass', name: '시간의 모래', description: '이번 턴 제한시간 +6초, 기본 배수 +0.5.' },
+  soul_candelabra: { id: 'soul_candelabra', name: '영혼의 촛대', description: '이번 턴 진실 1장당 정산 배수 +1.0.' },
 }
 
 /** 손패 보충용 전체 의식 카드 ID 목록 */

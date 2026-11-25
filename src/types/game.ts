@@ -39,6 +39,7 @@ export type RitualId =
   | 'swapped_card'
   | 'ash_breath'
   | 'forbidden_hand'
+  | 'truth_bell' | 'scale_flip' | 'sand_glass' | 'soul_candelabra'
 
 /** 유물 ID */
 export type RelicId =
@@ -48,6 +49,7 @@ export type RelicId =
   | 'crow_feather'
   | 'rusty_weight'
   | 'ashen_seal'
+  | 'golden_pan' | 'wax_charm' | 'chalice_of_ruin'
 
 /** 보스(계약자) ID */
 export type BossId = 'blind_clockmaker' | 'mirror_priest' | 'scale_master'
@@ -113,6 +115,7 @@ export interface TurnState {
   forbiddenHandBonus: number
   /** 첫 카드 공개 후 타이머 가동 */
   timerStarted: boolean
+  timerBonusSec: number
 }
 
 /** 보상 선택지 */
@@ -129,6 +132,7 @@ export interface GameState {
   bossHp: number
   candles: number
   hasUsedRevive: boolean
+  waxCharmUsed: boolean
   board: BoardCard[]
   hand: RitualId[]
   /** 보충 가능한 소모 의식 */

@@ -30,6 +30,7 @@ export function createInitialState(seed = Date.now()): GameState {
     bossHp: getBoss(0).maxHp,
     candles: MAX_CANDLES,
     hasUsedRevive: false,
+    waxCharmUsed: false,
     board: [],
     hand: [],
     spentRituals: [],
@@ -70,8 +71,13 @@ export function toDamageInput(state: GameState): DamageInput {
 
 function startStage(state: GameState, stageIndex: number): GameState {
   const boss = getBoss(stageIndex)
+  const pool = ALL_RITUAL_IDS.filter((id) => !state.hand.includes(id) && !(id === 'ash_breath' && state.ashBreathUsedThisRun))
+  const drawn = state.relics.includes('golden_pan') ? pickN(pool, 1, createRng(state.rngSeed + stageIndex * 997 + 43)) : []
   return {
     ...state,
+    hand: [...state.hand, ...drawn],
+    spentRituals: state.spentRituals.filter((id) => !drawn.includes(id)),
+    waxCharmUsed: false,
     phase: 'STAGE_INTRO',
     stageIndex,
     bossHp: boss.maxHp,
@@ -186,6 +192,10 @@ function applyCashOut(
 }
 
 function handleCurse(state: GameState): GameState {
+  if (state.relics.includes('wax_charm') && !state.waxCharmUsed) {
+    log('info', '촛농의 부적이 저주를 막았다.')
+    return { ...state, waxCharmUsed: true }
+  }
   if (state.turn.saltCircleActive) {
     log('info', 'salt circle defend + auto cash out')
     return applyCashOut(
@@ -286,6 +296,19 @@ function applyRitual(
   }
 
   switch (ritualId) {
+    case 'truth_bell': {
+      const target = next.board.find((c) => c.face === 'truth' && !c.revealed && !c.removed)
+      return target ? gameReducer(next, { type: 'FLIP_CARD', cardId: target.id }) : state
+    }
+    case 'scale_flip': {
+      const target = next.board.find((c) => c.face === 'curse' && !c.revealed && !c.removed)
+      if (!target) return state
+      return { ...next, board: next.board.map((c) => c.id === target.id ? { ...c, face: 'truth', fakeHint: false } : c) }
+    }
+    case 'sand_glass':
+      return { ...next, turn: { ...next.turn, timerBonusSec: next.turn.timerBonusSec + 6 } }
+    case 'soul_candelabra':
+      return next
     case 'clairvoyant_coin': {
       const target =
         targetCardId ??
@@ -385,7 +408,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         relics.push(action.relicId)
       }
       const pool = state.spentRituals.filter((id) => !state.hand.includes(id) && !(id === 'ash_breath' && state.ashBreathUsedThisRun))
-      const refill = action.choice === 'rituals' ? pickN(pool, Math.min(2, MAX_HAND - state.hand.length), createRng(state.rngSeed + state.stageIndex * 777 + 1)) : []
+      const refill = action.choice === 'rituals' ? pickN(pool, Math.max(0, Math.min(2, MAX_HAND - state.hand.length)), createRng(state.rngSeed + state.stageIndex * 777 + 1)) : []
       const hand = [...state.hand, ...refill]
       const spentRituals = state.spentRituals.filter((id) => !refill.includes(id))
       const candles = action.choice === 'candle' ? Math.min(MAX_CANDLES, state.candles + 1) : state.candles

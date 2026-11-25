@@ -96,6 +96,8 @@ export function computeRelicMultiplier(input: DamageInput): number {
     mult *= 1 + 0.15 * input.cursesHitThisRun
   }
 
+  if (input.relics.includes('chalice_of_ruin') && input.ritualsUsedThisTurn.length >= 2) mult *= 2
+
   if (input.candles === 1 && input.bossLastCandleMult > 1) {
     mult *= input.bossLastCandleMult
   }
@@ -114,7 +116,8 @@ export function calculateDamage(input: DamageInput): DamageBreakdown {
   const comboMultiplier = getComboMultiplier(input.consecutiveTruths, {
     rustyWeight: input.rustyWeightActive,
     bossThirdSuccessBonus: input.bossThirdSuccessBonus,
-  })
+  }) + (input.ritualsUsedThisTurn.includes('sand_glass') ? 0.5 : 0)
+    + (input.ritualsUsedThisTurn.includes('soul_candelabra') ? input.consecutiveTruths : 0)
   const ritualMultiplier = computeRitualMultiplier(input)
   const relicMultiplier = computeRelicMultiplier(input)
 

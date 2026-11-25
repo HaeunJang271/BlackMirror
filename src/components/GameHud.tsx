@@ -172,7 +172,7 @@ export function GameHud({
             </>
           ) : (
             <p className="text-[11px] text-[#9a8b72]/70 sm:text-[14.52px]">
-              <span className="touch-hint">아이콘을 탭하면 설명, 한 번 더 누르면 사용</span><span className="mouse-hint">의식·유물 아이콘에 올리면 설명이 표시됩니다</span>
+              <span className="touch-hint">아이콘을 탭하면 설명, 한 번 더 누르면 사용</span><span className="mouse-hint">의식을 한 번 클릭하면 설명, 한 번 더 클릭하면 사용</span>
             </p>
           )}
         </div>
@@ -211,20 +211,21 @@ export function GameHud({
 
           <div className="flex items-center justify-between gap-2 sm:block">
           <div className="grid min-w-0 flex-1 grid-cols-4 gap-1 sm:flex sm:justify-end sm:gap-2" aria-label="의식">
-            {Array.from({ length: 4 }).map((_, i) => {
+            {Array.from({ length: Math.max(4, hand.length) }).map((_, i) => {
               const id = hand[i]
               const ritual = id ? RITUALS[id] : null
               const Icon = id ? RITUAL_ICONS[id] : null
+              const disabled = !ritual || inputLocked || (id === 'ash_breath' && !ashBreathAvailable)
               return (
                 <button
                   key={i}
                   type="button"
-                  disabled={!ritual || inputLocked || (id === 'ash_breath' && !ashBreathAvailable)}
+                  disabled={disabled}
                   onPointerDown={(event) => { pointerType.current = event.pointerType }}
                   onClick={() => {
                     if (!id || !ritual) return
                     const key = `ritual-${id}`
-                    if (pointerType.current !== 'mouse' && selected !== key) showTip(key, ritual)
+                    if (selected !== key) showTip(key, ritual)
                     else { onUseRitual(id); setSelected(null); setTip(null) }
                   }}
                   onPointerEnter={(event) => {
@@ -235,7 +236,7 @@ export function GameHud({
                       })
                     }
                   }}
-                  onPointerLeave={(event) => { if (event.pointerType === 'mouse') setTip(null) }}
+                  onPointerLeave={(event) => { if (event.pointerType === 'mouse') { setTip(null); setSelected(null) } }}
                   onFocus={() => {
                     if (pointerType.current === 'mouse' && ritual) {
                       setTip({
@@ -244,9 +245,9 @@ export function GameHud({
                       })
                     }
                   }}
-                  onBlur={() => { if (pointerType.current === 'mouse') setTip(null) }}
+                  onBlur={() => { if (pointerType.current === 'mouse') { setTip(null); setSelected(null) } }}
                   aria-label={ritual?.name ?? '빈 의식 슬롯'}
-                  className={`pointer-events-auto flex h-11 w-full min-w-0 items-center justify-center rounded-sm border bg-[#2c241a]/95 text-[#e8c878] disabled:opacity-35 sm:h-14 sm:w-14 ${selected === `ritual-${id}` ? 'border-wax ring-2 ring-wax/70' : 'border-brass/50'}`}
+                  className={`pointer-events-auto flex h-11 w-full min-w-0 items-center justify-center rounded-sm border bg-[#2c241a]/95 text-[#e8c878] disabled:opacity-35 sm:h-14 sm:w-14 ${selected === `ritual-${id}` ? 'border-wax ring-2 ring-wax/70' : 'border-brass/50'} ${tutorialHint === 'ritual' && !disabled ? 'ritual-tutorial-glow' : ''}`}
                 >
                   {Icon ? <Icon className="h-5 w-5 sm:h-7 sm:w-7" strokeWidth={1.75} /> : null}
                 </button>
