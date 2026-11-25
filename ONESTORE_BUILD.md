@@ -3,12 +3,14 @@
 ## 준비
 
 - Node.js 22.6 이상, Android Studio와 Android SDK Platform 36을 설치합니다. Capacitor 8은 Android Studio 2025.2.1 이상이 필요합니다.
-- `npm install` 후 `npm run build:android`를 실행합니다. 이 명령은 `.env.onestore`를 적용하고 웹 결과물을 `android/`에 동기화합니다. 명령에 포함된 Node TypeScript 옵션은 현재 TypeScript 7 설정을 읽기 위한 것입니다.
+- `npm install` 후 `npm run build:android`를 실행합니다. 이 명령은 `.env.onestore`를 적용하고 웹 결과물을 `android/`에 동기화합니다.
 - Android Studio에서 **Open**으로 `android` 폴더를 열고 Gradle 동기화를 완료합니다. SDK 경로를 묻는 경우 SDK Manager에서 설치한 경로를 선택합니다.
-- 기본 패키지 ID는 `com.blackscale.game`입니다. 첫 출시 전에 실제 사용할 고유 ID를 정하고, 변경 시 `capacitor.config.ts`, `android/app/build.gradle`의 `applicationId`·`namespace`, `MainActivity.java`의 패키지 및 경로, `strings.xml`을 함께 수정한 뒤 다시 동기화합니다. 출시 후에는 패키지 ID를 바꾸면 기존 앱의 업데이트가 아닙니다.
+- 기본 패키지 ID는 `com.blackscale.game`입니다. 첫 출시 전에 실제 사용할 고유 ID를 정하고, 변경 시 `capacitor.config.json`, `android/app/build.gradle`의 `applicationId`·`namespace`, `MainActivity.java`의 패키지 및 경로, `strings.xml`을 함께 수정한 뒤 다시 동기화합니다. 출시 후에는 패키지 ID를 바꾸면 기존 앱의 업데이트가 아닙니다.
 - 기본 아이콘과 스플래시 이미지는 Capacitor 템플릿입니다. 출시 전에 `android/app/src/main/res/`의 아이콘과 스플래시를 게임 자산으로 교체하고, 실제 기기에서 화면 여백·터치·뒤로가기·사운드와 무료 부활을 확인합니다.
 
 ## 서명 및 업로드
+
+GitHub Actions에서 서명된 AAB를 빌드하려면 저장소의 Actions secrets에 `KEYSTORE_BASE64` (키스토어 파일의 base64), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`를 등록합니다. `main`에 push하거나 **Build signed Android App Bundle**을 수동 실행하면 `onestore-release-aab` 아티팩트가 생성됩니다. 기존 앱을 업데이트할 때는 반드시 같은 서명키를 사용합니다.
 
 1. Android Studio에서 **Build → Generate Signed Bundle / APK**를 선택합니다.
 2. **Android App Bundle** 또는 **APK**를 고르고, 기존 키스토어를 선택하거나 **Create new**로 배포 키를 만듭니다. 키스토어와 비밀번호는 별도로 안전하게 보관합니다.

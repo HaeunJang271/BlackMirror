@@ -1,6 +1,12 @@
 apply plugin: 'com.android.application'
 
 android {
+    def keystorePath = System.getenv('ANDROID_KEYSTORE_PATH')
+    def keystorePassword = System.getenv('ANDROID_KEYSTORE_PASSWORD')
+    def releaseKeyAlias = System.getenv('ANDROID_KEY_ALIAS')
+    def releaseKeyPassword = System.getenv('ANDROID_KEY_PASSWORD')
+    def hasReleaseSigning = [keystorePath, keystorePassword, releaseKeyAlias, releaseKeyPassword].every { it }
+
     namespace = "com.blackscale.game"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
@@ -16,8 +22,21 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (hasReleaseSigning) {
+                storeFile file(keystorePath)
+                storePassword keystorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
+        }
+    }
     buildTypes {
         release {
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

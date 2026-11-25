@@ -1,0 +1,48 @@
+name: Build signed Android App Bundle
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Build and sync Android
+        run: npm ci && VITE_PLATFORM=onestore npm run build && npx cap sync android
+      - name: Decode release keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          test -n "$KEYSTORE_BASE64" || { echo "KEYSTORE_BASE64 is required" >&2; exit 1; }
+          echo "$KEYSTORE_BASE64" | base64 -d > android/app/release.jks
+          test -s android/app/release.jks
+      - name: Build signed release bundle
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE_PATH: release.jks
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          test -n "$ANDROID_KEYSTORE_PASSWORD" && test -n "$ANDROID_KEY_ALIAS" && test -n "$ANDROID_KEY_PASSWORD" || { echo "Signing secrets are required" >&2; exit 1; }
+          chmod +x gradlew
+          ./gradlew bundleRelease
+      - uses: actions/upload-artifact@v4
+        with:
+          name: onestore-release-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error

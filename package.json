@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "build:android": "npm run build -- --mode onestore && node --experimental-strip-types node_modules/@capacitor/cli/bin/capacitor sync android",
+    "build:android": "npm run build -- --mode onestore && cap sync android",
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run",
