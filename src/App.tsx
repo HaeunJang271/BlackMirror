@@ -64,6 +64,7 @@ export default function App() {
   const [opening, setOpening] = useState<number | null>(null)
   const [stageBanner, setStageBanner] = useState<number | null>(null)
   const [tutorial, setTutorial] = useState<'first' | 'truth' | 'ritual' | 'continue' | 'done'>(() => readFlag(TUTORIAL_KEY) ? 'done' : 'first')
+  const [firstTruthLock, setFirstTruthLock] = useState(false)
 
   const [hitFx, setHitFx] = useState(false)
   const [nodFx, setNodFx] = useState(false)
@@ -113,6 +114,7 @@ export default function App() {
   }, [stageBanner])
 
   useEffect(() => {
+    if (!playing) setFirstTruthLock(false)
     if (tutorial !== 'done' && state.stageIndex === 0 && state.phase === 'REWARD') {
       writeFlag(TUTORIAL_KEY)
       setTutorial('done')
@@ -307,7 +309,7 @@ export default function App() {
         bossId={boss.id}
         expectedDamage={playing ? breakdown.finalDamage : state.lastDamage}
         multiplier={playing ? displayMult : Math.max(1, displayMult)}
-        interactive={playing && !adBusy && !exitDialog && stageBanner === null && !(tutorial !== 'done' && state.stageIndex === 0 && state.turn.consecutiveTruths > 0)}
+        interactive={playing && !adBusy && !exitDialog && stageBanner === null && !firstTruthLock}
         hit={hitFx}
         nod={nodFx}
         saltActive={state.turn.saltCircleActive}
@@ -320,6 +322,7 @@ export default function App() {
           void playCardFlip()
           const next = gameReducer(state, { type: 'FLIP_CARD', cardId })
           if ((tutorial === 'first' || tutorial === 'truth') && next !== state) {
+            if (next.turn.consecutiveTruths > 0) setFirstTruthLock(true)
             const hasUsableRitual = next.hand.some((ritualId) => {
               const targetCardId = ritualId === 'clairvoyant_coin' ? next.board.find((card) => !card.revealed && !card.removed)?.id : undefined
               return gameReducer(next, { type: 'USE_RITUAL', ritualId, targetCardId }) !== next
@@ -351,7 +354,7 @@ export default function App() {
 
       {showHud && (
         <GameHud
-          tutorialHint={playing && state.stageIndex === 0 ? (tutorial === 'first' ? 'first' : tutorial === 'truth' ? (state.turn.consecutiveTruths > 0 ? 'truth' : 'retry') : tutorial === 'ritual' ? 'ritual' : tutorial === 'continue' ? (state.turn.consecutiveTruths > 0 ? 'truth' : 'next') : null) : null}
+          tutorialHint={playing && state.stageIndex === 0 ? (tutorial === 'first' ? 'first' : tutorial === 'truth' ? (state.turn.consecutiveTruths > 0 ? 'truth' : 'retry') : tutorial === 'ritual' ? 'ritual' : tutorial === 'continue' ? (state.turn.consecutiveTruths > 0 ? (firstTruthLock ? 'truth' : 'more') : 'next') : null) : null}
           boss={boss}
           bossLine={bossLine}
           bossHp={state.bossHp}
@@ -396,7 +399,7 @@ export default function App() {
         }}
         onStart={() => {
           void unlockAudio()
-          if (tutorial !== 'done') setTutorial('first')
+          if (tutorial !== 'done') { setTutorial('first'); setFirstTruthLock(false) }
           if (readFlag(OPENING_KEY)) dispatch({ type: 'START_RUN' })
           else setOpening(0)
         }}

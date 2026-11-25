@@ -7,7 +7,7 @@ import { countRemainingFaces } from '../utils/boardStats'
 import { RELIC_ICONS, RITUAL_ICONS } from './HudIcons'
 
 interface GameHudProps {
-  tutorialHint?: 'first' | 'retry' | 'next' | 'truth' | 'ritual' | null
+  tutorialHint?: 'first' | 'retry' | 'next' | 'truth' | 'more' | 'ritual' | null
   boss: BossDef
   bossLine: string
   bossHp: number
@@ -66,10 +66,11 @@ export function GameHud({
     <div className="pointer-events-none absolute inset-0 z-10 flex flex-col">
       {tutorialHint && (
         <p role="status" className={`tutorial-hint absolute left-1/2 w-max max-w-[90%] -translate-x-1/2 text-center ${tutorialHint === 'ritual' ? 'top-1/2 -translate-y-1/2' : 'top-[20%]'}`}>
-          {tutorialHint === 'first' ? '패를 눌러 진실을 찾으세요. 저주가 나오면 촛불이 꺼집니다.'
-            : tutorialHint === 'retry' ? '저주가 나왔습니다. 다시 패를 열어 진실을 찾으세요.'
+          {tutorialHint === 'first' ? '처음 진실을 찾으면 이번 라운드에는 더 열 수 없습니다. 패를 누르세요.'
+            : tutorialHint === 'retry' ? '저주는 촛불을 끕니다. 다시 패를 열어 진실을 찾으세요.'
             : tutorialHint === 'next' ? '패를 열고 정산해 봉인을 깨세요.'
-            : tutorialHint === 'truth' ? '진실을 찾았습니다. 정산해 봉인을 깎으세요.'
+            : tutorialHint === 'truth' ? '이번 라운드에는 한 장만 열 수 있습니다. 정산해 봉인을 깎으세요.'
+            : tutorialHint === 'more' ? '더 열어 배수를 키우거나, 지금 정산해 봉인을 깎으세요.'
               : '의식 아이콘을 한 번 터치하면 설명, 두 번 터치하면 사용합니다.'}
         </p>
       )}
