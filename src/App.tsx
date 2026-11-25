@@ -37,6 +37,13 @@ import {
   unlockAudio,
 } from './utils/sound'
 
+const OPENING_KEY = 'blackscale_opening_done'
+const TUTORIAL_KEY = 'blackscale_tutorial_done'
+const openingLines = ['00:00. 문이 잠겼다.', '나가려면 저울 앞에 앉은 세 망자의 봉인을 깨야 한다.', '촛불 세 자루가 다 꺼지기 전에.']
+const stageLines = ['첫 번째 계약자. 멈춘 시간을 지키는 자.', '두 번째 계약자. 거짓만 비추는 자.', '마지막 계약자. 이 방의 규칙 그 자체.']
+const readFlag = (key: string) => { try { return localStorage.getItem(key) !== null } catch { return false } }
+const writeFlag = (key: string) => { try { localStorage.setItem(key, '1') } catch { /* Storage may be unavailable. */ } }
+
 const IS_ONESTORE = import.meta.env.VITE_PLATFORM === 'onestore'
 
 /**
@@ -53,6 +60,11 @@ export default function App() {
   const turnClock = useRef({ stage: -1, round: -1, remainingMs: 0 })
   const ritualKey = useRef(0)
   const dialogueTimer = useRef<number | null>(null)
+
+  const [opening, setOpening] = useState<number | null>(null)
+  const [stageBanner, setStageBanner] = useState<number | null>(null)
+  const [tutorial, setTutorial] = useState<'first' | 'truth' | 'waiting' | 'ritual' | 'done'>(() => readFlag(TUTORIAL_KEY) ? 'done' : 'first')
+  const tutorialRound = useRef<number | null>(null)
 
   const [hitFx, setHitFx] = useState(false)
   const [nodFx, setNodFx] = useState(false)
@@ -71,6 +83,45 @@ export default function App() {
   const breakdown = calculateDamage(toDamageInput(state))
   const playing = state.phase === 'PLAYER_TURN'
   const resolving = state.phase === 'RESOLVING'
+
+  const finishOpening = () => {
+    writeFlag(OPENING_KEY)
+    setOpening(null)
+    dispatch({ type: 'START_RUN' })
+  }
+
+  useEffect(() => {
+    if (opening === null) return
+    const id = window.setTimeout(() => {
+      if (opening === openingLines.length - 1) finishOpening()
+      else setOpening(opening + 1)
+    }, 2400)
+    return () => window.clearTimeout(id)
+  }, [opening])
+
+  useEffect(() => {
+    if (state.phase !== 'STAGE_INTRO') return
+    setStageBanner(state.stageIndex)
+    dispatch({ type: 'CONFIRM_INTRO' })
+    const id = window.setTimeout(() => setStageBanner(null), 1500)
+    return () => window.clearTimeout(id)
+  }, [state.phase, state.stageIndex])
+
+  useEffect(() => {
+    if (stageBanner === null) return
+    const id = window.setTimeout(() => setStageBanner(null), 1500)
+    return () => window.clearTimeout(id)
+  }, [stageBanner])
+
+  useEffect(() => {
+    if (tutorial === 'waiting' && state.stageIndex === 0 && playing && tutorialRound.current !== null && state.round > tutorialRound.current && state.hand.length > 0) {
+      tutorialRound.current = state.round
+      setTutorial('ritual')
+    } else if (tutorial === 'ritual' && (state.stageIndex !== 0 || (state.phase !== 'PLAYER_TURN' && state.phase !== 'STAGE_INTRO'))) {
+      writeFlag(TUTORIAL_KEY)
+      setTutorial('done')
+    }
+  }, [tutorial, state.stageIndex, state.phase, state.round, state.hand.length, playing])
 
   useEffect(() => {
     void unlockAudio()
@@ -244,7 +295,7 @@ export default function App() {
     breakdown.comboMultiplier *
     breakdown.ritualMultiplier *
     breakdown.relicMultiplier
-  const inputLocked = !playing || adBusy || exitDialog
+  const inputLocked = !playing || adBusy || exitDialog || stageBanner !== null
   const showHud =
     state.phase === 'PLAYER_TURN' ||
     state.phase === 'RESOLVING' ||
@@ -258,7 +309,7 @@ export default function App() {
         bossId={boss.id}
         expectedDamage={playing ? breakdown.finalDamage : state.lastDamage}
         multiplier={playing ? displayMult : Math.max(1, displayMult)}
-        interactive={playing && !adBusy && !exitDialog}
+        interactive={playing && !adBusy && !exitDialog && stageBanner === null}
         hit={hitFx}
         nod={nodFx}
         saltActive={state.turn.saltCircleActive}
@@ -269,6 +320,8 @@ export default function App() {
         onCardClick={(cardId) => {
           void unlockAudio()
           void playCardFlip()
+          const next = gameReducer(state, { type: 'FLIP_CARD', cardId })
+          if (tutorial === 'first' && next !== state) setTutorial('truth')
           dispatch({ type: 'FLIP_CARD', cardId })
         }}
       />
@@ -294,6 +347,7 @@ export default function App() {
 
       {showHud && (
         <GameHud
+          tutorialHint={playing && state.stageIndex === 0 ? (tutorial === 'first' ? 'first' : tutorial === 'truth' ? (state.turn.consecutiveTruths > 0 ? 'truth' : 'retry') : tutorial === 'ritual' ? 'ritual' : null) : null}
           boss={boss}
           bossLine={bossLine}
           bossHp={state.bossHp}
@@ -309,6 +363,10 @@ export default function App() {
           inputLocked={inputLocked}
           onCashOut={() => {
             void unlockAudio()
+            if (tutorial === 'truth' && gameReducer(state, { type: 'CASH_OUT' }) !== state) {
+              tutorialRound.current = state.round
+              setTutorial('waiting')
+            }
             dispatch({ type: 'CASH_OUT' })
           }}
           onUseRitual={(ritualId) => {
@@ -318,6 +376,7 @@ export default function App() {
             const targetCardId = needsTarget ? target?.id : undefined
             const action = { type: 'USE_RITUAL' as const, ritualId, targetCardId }
             if (gameReducer(state, action) === state) return
+            if (tutorial === 'ritual') { writeFlag(TUTORIAL_KEY); setTutorial('done') }
             fireRitual(ritualId, targetCardId)
             dispatch(action)
           }}
@@ -326,7 +385,7 @@ export default function App() {
 
       {resolving && state.resolve && <ResolveOverlay info={state.resolve} />}
 
-      <OverlayScreens
+      {state.phase !== 'STAGE_INTRO' && <OverlayScreens
         phase={state.phase}
         boss={boss}
         onEnableAudio={() => { void unlockAudio() }}
@@ -336,7 +395,9 @@ export default function App() {
         }}
         onStart={() => {
           void unlockAudio()
-          dispatch({ type: 'START_RUN' })
+          if (tutorial !== 'done') { setTutorial('first'); tutorialRound.current = null }
+          if (readFlag(OPENING_KEY)) dispatch({ type: 'START_RUN' })
+          else setOpening(0)
         }}
         onConfirmIntro={() => dispatch({ type: 'CONFIRM_INTRO' })}
         onRetry={() => {
@@ -347,7 +408,22 @@ export default function App() {
         adBusy={adBusy}
         adError={adError}
         freeRevive={IS_ONESTORE}
-      />
+      />}
+
+      {stageBanner !== null && opening === null && (
+        <div className="pointer-events-none absolute inset-x-0 top-[20%] z-40 flex justify-center px-4" role="status">
+          <div className="stage-story bg-black/85 px-6 py-4 text-center font-[family-name:var(--font-display)] text-ink">
+            <p className="mb-1 text-sm text-brass">{getBoss(stageBanner).name}</p>
+            <p>{stageLines[stageBanner]}</p>
+          </div>
+        </div>
+      )}
+      {opening !== null && (
+        <div className="absolute inset-0 z-[60] flex cursor-pointer items-center justify-center bg-black px-6 text-center" onClick={finishOpening} role="button" tabIndex={0} aria-label="인트로 건너뛰기" onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') finishOpening() }}>
+          <p key={opening} className="opening-line font-[family-name:var(--font-display)] text-lg text-ink sm:text-2xl">{openingLines[opening]}</p>
+          <span className="absolute bottom-[max(1.5rem,env(safe-area-inset-bottom))] right-[max(1.5rem,env(safe-area-inset-right))] text-xs tracking-widest text-ink-muted">SKIP</span>
+        </div>
+      )}
 
       {adBusy && (
         <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/80 px-6" role="status" aria-live="polite">

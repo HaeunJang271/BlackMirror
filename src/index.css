@@ -64,3 +64,8 @@
   .touch-hint { display: none; }
   .mouse-hint { display: inline; }
 }
+
+@keyframes story-fade { 0%, 100% { opacity: 0; } 20%, 80% { opacity: 1; } }
+.opening-line { animation: story-fade 2.4s ease-in-out both; }
+.stage-story { animation: story-fade 1.5s ease-in-out both; }
+.tutorial-hint { border: 1px solid rgba(197,160,89,.3); background: rgba(20,15,8,.8); color: #e8c878; padding: .35rem .6rem; font-size: .75rem; line-height: 1.4; }
