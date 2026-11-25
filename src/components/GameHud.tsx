@@ -7,7 +7,7 @@ import { countRemainingFaces } from '../utils/boardStats'
 import { RELIC_ICONS, RITUAL_ICONS } from './HudIcons'
 
 interface GameHudProps {
-  tutorialHint?: 'first' | 'retry' | 'truth' | 'ritual' | null
+  tutorialHint?: 'first' | 'retry' | 'next' | 'truth' | 'ritual' | null
   boss: BossDef
   bossLine: string
   bossHp: number
@@ -68,6 +68,7 @@ export function GameHud({
         <p role="status" className="tutorial-hint absolute left-1/2 top-[20%] w-max max-w-[90%] -translate-x-1/2 text-center">
           {tutorialHint === 'first' ? '패를 눌러 진실을 찾으세요. 저주가 나오면 촛불이 꺼집니다.'
             : tutorialHint === 'retry' ? '저주가 나왔습니다. 다시 패를 열어 진실을 찾으세요.'
+            : tutorialHint === 'next' ? '패를 열고 정산해 봉인을 깨세요.'
             : tutorialHint === 'truth' ? '더 열어 배수를 키우거나, 지금 정산해 봉인을 깎으세요.'
               : '의식 카드를 탭해 패를 엿보거나 저주를 피할 수 있습니다.'}
         </p>

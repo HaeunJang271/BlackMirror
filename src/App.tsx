@@ -63,7 +63,7 @@ export default function App() {
 
   const [opening, setOpening] = useState<number | null>(null)
   const [stageBanner, setStageBanner] = useState<number | null>(null)
-  const [tutorial, setTutorial] = useState<'first' | 'truth' | 'waiting' | 'ritual' | 'done'>(() => readFlag(TUTORIAL_KEY) ? 'done' : 'first')
+  const [tutorial, setTutorial] = useState<'first' | 'truth' | 'waiting' | 'ritual' | 'continue' | 'done'>(() => readFlag(TUTORIAL_KEY) ? 'done' : 'first')
   const tutorialRound = useRef<number | null>(null)
 
   const [hitFx, setHitFx] = useState(false)
@@ -114,12 +114,14 @@ export default function App() {
   }, [stageBanner])
 
   useEffect(() => {
-    if (tutorial === 'waiting' && state.stageIndex === 0 && playing && tutorialRound.current !== null && state.round > tutorialRound.current && state.hand.length > 0) {
-      tutorialRound.current = state.round
-      setTutorial('ritual')
-    } else if (tutorial === 'ritual' && (state.stageIndex !== 0 || (state.phase !== 'PLAYER_TURN' && state.phase !== 'STAGE_INTRO'))) {
+    if (tutorial !== 'done' && state.stageIndex === 0 && state.phase === 'REWARD') {
       writeFlag(TUTORIAL_KEY)
       setTutorial('done')
+    } else if (tutorial === 'waiting' && state.stageIndex === 0 && playing && tutorialRound.current !== null && state.round > tutorialRound.current) {
+      tutorialRound.current = state.round
+      setTutorial(state.hand.length > 0 ? 'ritual' : 'continue')
+    } else if (tutorial === 'ritual' && (state.stageIndex !== 0 || (state.phase !== 'PLAYER_TURN' && state.phase !== 'STAGE_INTRO'))) {
+      setTutorial('continue')
     }
   }, [tutorial, state.stageIndex, state.phase, state.round, state.hand.length, playing])
 
@@ -186,7 +188,7 @@ export default function App() {
 
   useEffect(() => {
     const limit = boss.turnTimerSec
-    if (!playing || !limit) {
+    if (!playing || !limit || (tutorial !== 'done' && state.stageIndex === 0)) {
       if (state.phase === 'TITLE' || state.phase === 'STAGE_INTRO') turnClock.current.stage = -1
       setTimerSec(null)
       lastTickSec.current = null
@@ -217,7 +219,7 @@ export default function App() {
       window.clearInterval(tick)
       turnClock.current.remainingMs = Math.max(0, remaining - (Date.now() - startedAt))
     }
-  }, [playing, boss.turnTimerSec, state.phase, state.stageIndex, state.round, state.turn.timerStarted, exitDialog, adBusy])
+  }, [playing, boss.turnTimerSec, state.phase, state.stageIndex, state.round, state.turn.timerStarted, exitDialog, adBusy, tutorial])
 
   useEffect(() => {
     if (!resolving || !state.resolve) return
@@ -347,13 +349,13 @@ export default function App() {
 
       {showHud && (
         <GameHud
-          tutorialHint={playing && state.stageIndex === 0 ? (tutorial === 'first' ? 'first' : tutorial === 'truth' ? (state.turn.consecutiveTruths > 0 ? 'truth' : 'retry') : tutorial === 'ritual' ? 'ritual' : null) : null}
+          tutorialHint={playing && state.stageIndex === 0 ? (tutorial === 'first' ? 'first' : tutorial === 'truth' ? (state.turn.consecutiveTruths > 0 ? 'truth' : 'retry') : tutorial === 'ritual' ? 'ritual' : tutorial === 'continue' ? (state.turn.consecutiveTruths > 0 ? 'truth' : 'next') : null) : null}
           boss={boss}
           bossLine={bossLine}
           bossHp={state.bossHp}
           stageIndex={state.stageIndex}
           board={state.board}
-          timerSec={playing && boss.turnTimerSec ? timerSec : null}
+          timerSec={playing && boss.turnTimerSec && !(tutorial !== 'done' && state.stageIndex === 0) ? timerSec : null}
           expectedDamage={playing ? breakdown.finalDamage : state.lastDamage}
           multiplier={playing ? displayMult : Math.max(1, displayMult)}
           canCashOut={playing && canCashOut(state.turn.consecutiveTruths)}
@@ -376,7 +378,7 @@ export default function App() {
             const targetCardId = needsTarget ? target?.id : undefined
             const action = { type: 'USE_RITUAL' as const, ritualId, targetCardId }
             if (gameReducer(state, action) === state) return
-            if (tutorial === 'ritual') { writeFlag(TUTORIAL_KEY); setTutorial('done') }
+            if (tutorial === 'ritual') setTutorial('continue')
             fireRitual(ritualId, targetCardId)
             dispatch(action)
           }}
@@ -419,9 +421,9 @@ export default function App() {
         </div>
       )}
       {opening !== null && (
-        <div className="absolute inset-0 z-[60] flex cursor-pointer items-center justify-center bg-black px-6 text-center" onClick={finishOpening} role="button" tabIndex={0} aria-label="인트로 건너뛰기" onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') finishOpening() }}>
+        <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black px-6 text-center">
           <p key={opening} className="opening-line font-[family-name:var(--font-display)] text-lg text-ink sm:text-2xl">{openingLines[opening]}</p>
-          <span className="absolute bottom-[max(1.5rem,env(safe-area-inset-bottom))] right-[max(1.5rem,env(safe-area-inset-right))] text-xs tracking-widest text-ink-muted">SKIP</span>
+          <button type="button" onClick={finishOpening} aria-label="인트로 건너뛰기" className="absolute bottom-[max(1rem,env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))] p-2 text-xs tracking-widest text-ink-muted">SKIP</button>
         </div>
       )}
 
