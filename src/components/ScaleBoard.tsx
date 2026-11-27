@@ -89,7 +89,7 @@ export function ScaleBoard({
               }`}
               aria-live="polite"
             >
-              {timerSec}s
+              {timerSec}초
             </span>
           )}
         </div>

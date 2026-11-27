@@ -141,7 +141,7 @@ export function GameHud({
                     : 'border-brass/40 text-brass'
                 }`}
               >
-                {timerSec}s
+                {timerSec}초
               </span>
             )}
           </div>
