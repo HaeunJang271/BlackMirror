@@ -54,7 +54,9 @@ export function OverlayScreens({
               검은 저울
             </h1>
             <p className="mt-3 text-xs leading-relaxed text-ink-muted">
-              촛불 세 자루. 다 꺼지면 이 방에서 못 나간다.
+              자정이 울리면 책상 위 촛불 세 자루에 당신의 영혼이 묶인다.
+              <br />
+              거짓을 피해 진실의 무게로, 이름 잃은 세 망자의 봉인을 부숴라.
             </p>
             <button
               type="button"
@@ -89,9 +91,9 @@ export function OverlayScreens({
         {phase === 'VICTORY' && (
           <>
             <h2 className="font-[family-name:var(--font-display)] text-2xl brass-text">
-              0시 01분
+              봉인이 깨졌다
             </h2>
-            <p className="mt-2 text-xs text-ink-muted">문이 열렸다. 한 걸음 내딛자 등 뒤에서 다시 저울 소리가 울린다.</p>
+            <p className="mt-2 text-xs text-ink-muted">새벽 0시 01분, 세 망자가 물러가고 문이 열렸다. 문 밖으로 한 걸음 내딛는 순간, 등 뒤에서 익숙한 황동 저울 소리가 다시 울린다.</p>
             <button
               type="button"
               onClick={onRetry}
@@ -105,9 +107,9 @@ export function OverlayScreens({
         {phase === 'GAME_OVER' && (
           <>
             <h2 className="font-[family-name:var(--font-display)] text-2xl text-curse-glow">
-              불이 다 꺼졌다
+              마지막 불씨가 꺼졌다
             </h2>
-            <p className="mt-2 text-xs text-ink-muted">다음 자정에 다시 앉아.</p>
+            <p className="mt-2 text-xs text-ink-muted">자정의 소환실에 당신의 이름이 하나 더 새겨졌다. 저울은 다음 자정을 기다린다.</p>
             {!hasUsedRevive && (
               <button
                 type="button"
