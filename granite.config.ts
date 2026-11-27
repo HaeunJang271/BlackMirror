@@ -1,7 +1,7 @@
 import { defineConfig } from '@apps-in-toss/web-framework/config'
 
 export default defineConfig({
-  appName: 'black-scale',
+  appName: 'blackscale',
   brand: { displayName: '검은 저울', primaryColor: '#C59B43', icon: '' },
   web: {
     host: 'localhost',
